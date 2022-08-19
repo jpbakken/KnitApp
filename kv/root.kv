@@ -3,7 +3,7 @@
 RootWidget:
     container: container
     toolbar: toolbar
-    box: box
+    list: list
 
     MDTopAppBar:
         id: toolbar
@@ -14,14 +14,13 @@ RootWidget:
         id: container
     
         MDBoxLayout:  
-            id: box
             size_hint: (.9, .6)
             pos_hint: {'center_x':.5, 'center_y':.5}
     
             
             ScrollView:
                 MDList:
-                    id: list
+                    id: list      
 
 
 

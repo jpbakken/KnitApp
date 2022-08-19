@@ -260,45 +260,7 @@ class MainApp(MDApp):
     def piece_build(self, piece_name):
         
             Snackbar(text=piece_name).open()
-        
-    # def project_build(self):
-        
-    #     for i in self.wk_piece:
-    #         self.screen.ids.list.add_widget(
-    #             OneLineListItem(text="{0}: {1}".format(i['Code'],
-    #                                                   i['Action']))
-    #         )
-        
-    def project_menu_right_open(self, button):
-        self.dots.caller = button
-        self.dots.open()
-
-
-    def project_menu_right_callback(self, text_item):
-        self.dots.dismiss()
-        Snackbar(text=text_item).open()
-
-        
-    def project_menu_right_build(self):
-        
-        menu_labels = ['Edit Project',
-                        'Jump to row',
-                        'Restart Project',
-                        ]
-        
-        menu_items = [
-            {
-                "viewclass": "OneLineListItem",
-                "text": i,
-                "height": dp(56),
-                "on_release": lambda x=i: self.menu_right_callback(x),
-              } for i in menu_labels
-        ]
-        
-        self.dots = MDDropdownMenu(
-            items=menu_items,
-            width_mult=4,
-        )
+    
 
     def steps_table_build(self):
         
