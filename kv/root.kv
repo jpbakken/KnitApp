@@ -1,27 +1,40 @@
 #:kivy 1.8.0
 
-RootWidget:
-    container: container
-    toolbar: toolbar
-    list: list
+
+<AppScreen>:
 
     MDTopAppBar:
         id: toolbar
         title: 'Projects'
         pos_hint: {'center_x':0.5, 'top':1}
 
-    MDFloatLayout:
-        id: container
-    
-        MDBoxLayout:  
-            size_hint: (.9, .6)
-            pos_hint: {'center_x':.5, 'center_y':.5}
-    
-            
-            ScrollView:
-                MDList:
-                    id: list      
+    ScreenManager:
+        id: sm
+        ListScreen:
+        TableScreen:
 
 
+
+<ListScreen>:
+    name: 'list'
+    
+    MDBoxLayout:  
+        id: box
+        size_hint: (.9, .6)
+        pos_hint: {'center_x':.5, 'center_y':.5}
+        
+        ScrollView:
+            MDList:
+                id: list      
+
+
+<TableScreen>:
+    name: 'table'
+
+    MDBoxLayout:  
+        id:box
+        size_hint: (.9, .6)
+        pos_hint: {'center_x':.5, 'center_y':.5}
+                        
 
 

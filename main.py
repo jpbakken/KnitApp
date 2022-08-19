@@ -22,6 +22,11 @@ from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.datatables import MDDataTable
 from kivy.properties import ObjectProperty
+from kivy.uix.screenmanager import ScreenManager
+from kivy.uix.screenmanager import Screen
+from kivy.uix.screenmanager import NoTransition
+
+
 # from kivymd.uix.scrollview import ScrollView
 
 # froxm kivymd.uix.scrollview import MDScrollView
@@ -31,13 +36,16 @@ from kivy.properties import ObjectProperty
 # from kivy.uix.settings import Settings
 # import pandas as pd
 # from kivymd.uix.tab import MDTabsBase
+Builder.load_file('kv/root.kv')
 
-class RootWidget(MDFloatLayout):
-    '''Create a controller that receives a custom widget from the kv lang file.
-    Add an action to be called from a kv file.
-    '''
+class AppScreen(Screen):
+    pass
 
-    container = ObjectProperty(None)
+class ListScreen(Screen):
+    pass
+
+class TableScreen(Screen):
+    pass
 
 class MainApp(MDApp):
 
@@ -78,6 +86,10 @@ class MainApp(MDApp):
         self.toolbar_title = project_name
         
         self.wk_pieces = self.wk_project['Pieces'].keys()
+        
+    def wk_piece_vars(self,piece_name):
+        
+        self.toolbar_title = self.wk_project_name + ': ' + piece_name
 
              
 # =============================================================================
@@ -93,7 +105,9 @@ class MainApp(MDApp):
         widget.disabled = False
         widget.opacity = 1
 
-
+    def set_screen(self, screen_name):
+        self.root.ids.sm.current = screen_name
+        
 # =============================================================================
 # gui build - menu
 # =============================================================================
@@ -105,12 +119,23 @@ class MainApp(MDApp):
                                     'Back to Projects',
                                     'Clear Box Widget',
                                     'Settings']
+
+        self.piece_menu_labels = ['Add Step',
+                                    'Back to Pieces',
+                                    'Settings']
         
         self.root_menu_labels = ['New Project',
                                     'Clear Box Widget',
                                  'Settings']
         
         self.toolbar_title = 'Projects'
+        
+        self.ListScreenName = 'list'
+        self.TableScreenName = 'table'
+        
+        self.RootScreenName = 'root'
+        self.ProjectScreenName = 'project'
+        self.PieceScreenName = 'pice'
 
 
     def menu_open(self, button):
@@ -124,8 +149,8 @@ class MainApp(MDApp):
         if text_item == 'Settings':
             self.open_settings()
         
-        elif text_item == 'Clear Box Widget':
-            self.widget_hide(self.screen.ids.list)
+        # elif self.screen_name == 'root':
+        #     self.widget_hide(self.screen_list.ids.list)
             
         elif text_item in self.root_menu_labels:
             self.root_menu_callback(text_item)
@@ -153,27 +178,25 @@ class MainApp(MDApp):
                                         width_mult=4)
         
         # set action items for the menu
-        self.screen.toolbar.left_action_items = [
+        self.root.ids.toolbar.left_action_items = [
             ["menu", lambda x: self.menu_open(x)]]
         
-        # set the toolbar title
-        self.screen.toolbar.title = self.toolbar_title
-    
+        self.root.ids.toolbar.title = self.toolbar_title
+            
 
 # =============================================================================
 # gui build - list of items in scrollview
 # =============================================================================
     def list_build(self,items):
         '''
-        clear and build the items to display in self.screen.ids.list
         '''
         
         # show the empty scroll list
-        self.widget_visible(self.screen.ids.list)
+        self.widget_visible(self.screen_list.ids.list)
 
         # iterate through items and build the scroll list
         for i in items:
-            self.screen.ids.list.add_widget(
+            self.screen_list.ids.list.add_widget(
                 OneLineListItem(
                     text="{}".format(i),
                     on_release=lambda x=i: self.list_on_release(x.text),))
@@ -186,10 +209,10 @@ class MainApp(MDApp):
         self.screen_name is set in the _build functions for each screen
         '''
         
-        if self.screen_name == 'root':
+        if self.screen_name == self.RootScreenName:
             self.project_build(text_item)
             
-        elif self.screen_name == 'project':
+        elif self.screen_name == self.ProjectScreenName:
             self.piece_build(text_item)
 
 # =============================================================================
@@ -205,22 +228,20 @@ class MainApp(MDApp):
             what happens when list item and menus are clicked 
         '''
         
-        self.screen_name = 'root'
+        self.set_screen(self.ListScreenName)
+
+        self.screen_name = self.RootScreenName
         
         self.menu_build(self.root_menu_labels)
         
         self.list_build(self.projects.keys())
 
-
-    def root_rebuild(self):
-        # self.screen.toolbar.title =  self.toolbar_title
-        self.root_build()
         
     def root_menu_callback(self, text_item):
         Snackbar(text=text_item).open()
 
 # =============================================================================
-# gui build - project page
+# gui build - project page (listing pices)
 # =============================================================================
 
     def project_build(self, project_name):
@@ -233,33 +254,42 @@ class MainApp(MDApp):
             what happens when list item and menus are clicked 
 
         '''
-        self.screen_name = 'project'
+        self.set_screen(self.ListScreenName)
+
+        self.screen_name = self.ProjectScreenName
         
         # set variables for the selected working project
         self.wk_project_vars(project_name)
 
         # update the toolbar title and menu items
-        # self.screen.toolbar.title = self.wk_project_name
+        # self.root.toolbar.title = self.wk_project_name
         self.menu_build(self.project_menu_labels)            
 
-        # rebuild self.screen.ids.list
+        # rebuild self.root.ids.list
         self.list_build(self.wk_pieces)
         
         
     def project_menu_callback(self, text_item):
         
         if text_item == 'Back to Projects':
-            self.root_rebuild()
+            self.root_build()
 
         else:
             Snackbar(text=text_item).open()
-            
-            
-            
-        
+
+# =============================================================================
+# gui build - piece page (listing steps)    
+# =============================================================================
     def piece_build(self, piece_name):
         
-            Snackbar(text=piece_name).open()
+            self.set_screen(self.TableScreenName)
+            self.wk_piece_vars(piece_name)
+            self.menu_build(self.piece_menu_labels) 
+            
+            self.wk_piece = self.wk_project['Pieces'][piece_name]
+
+            self.steps_table_build()
+            # Snackbar(text=piece_name).open()
     
 
     def steps_table_build(self):
@@ -276,8 +306,9 @@ class MainApp(MDApp):
                  step['NumRows'],
                  step['EndOnRow'],)
                 )
-        
+           
         self.data_tables = MDDataTable(
+            # id='datatable',
             size_hint=(0.7, 0.6),
             use_pagination=True,
             check=True,
@@ -294,8 +325,24 @@ class MainApp(MDApp):
             ],
             row_data = table_rows
         )
-        self.root.add_widget(self.data_tables)
+        self.data_tables.bind(on_row_press=self.on_row_press)
+        self.data_tables.bind(on_check_press=self.on_check_press)
+
+        self.screen_table.ids.box.clear_widgets()
+        self.screen_table.ids.box.add_widget(self.data_tables)
         
+
+
+    def on_row_press(self, instance_table, instance_row):
+        '''Called when a table row is clicked.'''
+        # Snackbar(text=instance_row).open()
+        print(instance_table, instance_row)
+
+    def on_check_press(self, instance_table, current_row):
+        '''Called when the check box in the table row is checked.'''
+        # Snackbar(text=current_row).open()
+
+        print(instance_table, current_row)
 
 
 
@@ -307,24 +354,23 @@ class MainApp(MDApp):
         
         self.theme_cls.theme_style = "Dark"
         self.theme_cls.primary_palette = "BlueGray"
-        
+
+        self.set_vars()        
         self.read_projects()
         
-        # # selection of work project
-        # wk_project_name = 'Redford Sweater Size 2'
-        # self.wk_project = self.projects[wk_project_name]   
+        # set root to main app screen        
+        self.root = AppScreen()
+        self.root.ids.sm.transition = NoTransition()
         
-        # wk_piece_name = 'Side Panel'
-        # self.wk_piece = self.wk_project['Pieces'][wk_piece_name]
-        
-        self.set_vars()
-        
-        self.screen = Builder.load_file('kv/root.kv')
+        # create variables to access ids on each page
+        self.screen_list = self.root.ids.sm.get_screen(self.ListScreenName)
+        self.screen_table = self.root.ids.sm.get_screen(self.TableScreenName)
 
+        # build the main page
         self.root_build()
 
 
-        return self.screen
+        return self.root
 
 
 if __name__ == '__main__':
