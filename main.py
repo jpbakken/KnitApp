@@ -16,27 +16,168 @@ import json
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.metrics import dp
+from kivy.uix.label import Label
 from kivymd.uix.snackbar import Snackbar
 from kivymd.uix.list import OneLineListItem
-from kivymd.uix.floatlayout import MDFloatLayout
 from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.datatables import MDDataTable
-from kivy.properties import ObjectProperty
-from kivy.uix.screenmanager import ScreenManager
 from kivy.uix.screenmanager import Screen
 from kivy.uix.screenmanager import NoTransition
+from kivymd.uix.gridlayout import MDGridLayout
+from itertools import compress
+from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.button import MDRaisedButton
 
 
+# from kivymd.uix.floatlayout import MDFloatLayout
+# from kivymd.uix.datatables import MDDataTable
+# from kivy.properties import ObjectProperty
+# from kivy.uix.screenmanager import ScreenManager
 # from kivymd.uix.scrollview import ScrollView
-
 # froxm kivymd.uix.scrollview import MDScrollView
-# from kivymd.uix.boxlayout import BoxLayout
 # from kivymd.uix.screen import MDScreen
-# from kivymd.uix.button import MDRaisedButton
 # from kivy.uix.settings import Settings
 # import pandas as pd
 # from kivymd.uix.tab import MDTabsBase
-Builder.load_file('kv/root.kv')
+kv = '''
+
+<AppScreen>:
+
+    MDTopAppBar:
+        id: toolbar
+        title: 'Projects'
+        pos_hint: {'center_x':0.5, 'top':1}
+
+    ScreenManager:
+        id: sm
+        ListScreen:
+        TableScreen:
+        StepEditScreen:
+
+
+
+<ListScreen>:
+    name: 'list'
+    
+    MDBoxLayout:  
+        id: box
+        size_hint: (.9, .6)
+        pos_hint: {'center_x':.5, 'center_y':.5}
+        
+        ScrollView:
+            MDList:
+                id: list   
+                   
+
+
+<TableScreen>:
+    name: 'table'
+
+    MDBoxLayout:  
+        id:box
+        size_hint: (.9, .6)
+        pos_hint: {'center_x':.5, 'center_y':.5}
+                        
+
+
+        ScrollView:
+            MDList:
+                id: list   
+                
+                        
+                        
+<StepEditScreen>:
+    name: 'stepedit'
+
+    MDFloatLayout:  
+        id:float
+        size_hint: (.9, .8)
+        pos_hint: {'center_x':.5, 'center_y':.5}
+                    
+        MDGridLayout:
+            id: list_grid
+            cols: 1
+            size_hint: (.6,.8)
+            pos_hint: {'center_x': .5, 'center_y': .5}
+                
+            MDTextField: 
+                id: code_entry
+                hint_text: 'Code'
+                helper_text: 'There can be only one...code must be unique'
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                #size_hint_x: None
+                width: 200
+            MDTextField: 
+                id: action_entry
+                hint_text: 'Action'
+                helper_text: 'Desribe the step'
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                #size_hint_x: None
+                width: 200
+            MDTextField: 
+                id: start_entry
+                hint_text: 'Start Row'
+                helper_text: 'Start row must be a number'
+                helper_text_mode: 'on_error'
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                #size_hint_x: None
+                width: 200
+                on_text_validate: app.step_int_type_check
+                
+            MDTextField: 
+                id: often_entry
+                hint_text: 'How Often to repeat the step'
+                helper_text: 'How often must be a number'
+                helper_text_mode: 'on_error'                
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                #size_hint_x: None
+                width: 200
+            MDTextField: 
+                id: times_entry
+                hint_text: 'How Many Times to repeat the step'
+                helper_text: 'How many times must be a number'
+                helper_text_mode: 'on_error'
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                #size_hint_x: None
+                width: 200
+            MDTextField: 
+                id: font_entry
+                hint_text: 'Font Color'
+                helper_text: 'Font color for the step when working the project'
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+                #size_hint_x: None
+                width: 200
+
+            MDGridLayout:
+                id: list_grid
+                cols: 3
+                size_hint: (1,.1)
+                #pos_hint: {'center_x': .5, 'center_y': .2}
+                col_default_width: self.width/3
+                col_default_height: self.height
+
+    
+                MDRaisedButton:
+                    text: 'Save Step'
+                    pos_hint: {'center_x': 0, 'center_y': .1}
+                    md_bg_color: app.theme_cls.primary_dark
+                    on_release: app.step_save(app.wk_step[0])
+
+                MDRaisedButton:
+                    text: 'Reset Values'
+                    pos_hint: {'center_x': .5, 'center_y': .1}
+                    md_bg_color: app.theme_cls.primary_dark
+                    on_release: app.step_set_text(app.wk_step[0])
+
+                MDRaisedButton:
+                    text: 'Exit'
+                    pos_hint: {'x': 1, 'center_y': .1}
+                    md_bg_color: app.theme_cls.primary_dark
+                    on_release: app.step_exit()
+'''
+
+
+
+Builder.load_string(kv)
 
 class AppScreen(Screen):
     pass
@@ -45,6 +186,9 @@ class ListScreen(Screen):
     pass
 
 class TableScreen(Screen):
+    pass
+
+class StepEditScreen(Screen):
     pass
 
 class MainApp(MDApp):
@@ -71,6 +215,8 @@ class MainApp(MDApp):
         
         with open('data/projects.json', 'w') as f:
             json.dump(self.projects, f)
+            
+        self.read_projects()
 
     def read_projects(self):
          
@@ -90,6 +236,7 @@ class MainApp(MDApp):
     def wk_piece_vars(self,piece_name):
         
         self.toolbar_title = self.wk_project_name + ': ' + piece_name
+        self.wk_piece_name = piece_name
 
              
 # =============================================================================
@@ -132,6 +279,7 @@ class MainApp(MDApp):
         
         self.ListScreenName = 'list'
         self.TableScreenName = 'table'
+        self.StepEditScreenName = 'stepedit'
         
         self.RootScreenName = 'root'
         self.ProjectScreenName = 'project'
@@ -214,7 +362,185 @@ class MainApp(MDApp):
             
         elif self.screen_name == self.ProjectScreenName:
             self.piece_build(text_item)
+        
+        else:
+            Snackbar(text=text_item).open()
 
+
+# =============================================================================
+# gui build - table list
+# =============================================================================
+
+    def steps_table_build(self,items):
+        '''
+        '''
+        
+        # show the empty scroll list
+        self.widget_visible(self.screen_table.ids.list)
+
+
+
+        # iterate through items and build the scroll list
+        for i in items:
+            
+            code = i['Code']
+            code_col_size = (.2, 1)
+            action = i['Action']
+            action_col_size = (1,1)
+            start_row = str(i['StartRow'])
+            times = str(i['HowManyTimes'])
+            often = str(i['HowOften'])
+            color = i['FontColor']
+            
+            grid = MDGridLayout(cols=4,
+                                )
+            #  add code button
+            box = self.steps_table_col_box(code_col_size)
+            
+            box.add_widget(MDRaisedButton(
+                text=code,
+                md_bg_color=self.theme_cls.primary_dark,
+                size_hint = (1,.8),
+                on_release = lambda x=code: self.step_edit(x.text)))
+            grid.add_widget(box)
+            
+            box = self.steps_table_col_box(action_col_size)
+            box.add_widget(Label(text=action))
+            grid.add_widget(box)
+
+
+            # grid = self.steps_table_col_add(grid, code, code_col_size,True)
+
+            # grid = self.steps_table_col_add(grid, action, action_col_size)
+
+
+            # grid.add_widget(Label(text=action))
+            grid.add_widget(Label(text=times))
+            grid.add_widget(Label(text=often))
+
+            # row = i['Code'] + ' ' * (30 - len(i['Code'])) + i['Action']
+            # self.screen_table.ids.action.text = i['Action']
+            # self.screen_table.ids.code.text = i['Code']
+
+            self.screen_table.ids.list.add_widget(grid)
+            
+            # self.screen_table.ids.list.add_widget(
+            #     OneLineListItem(
+            #         text="{}".format(row),
+            #         on_release=lambda x=i['Code']: self.list_on_release(x.text),))
+
+    def steps_table_col_add(self,grid,text,col_size, button=False):
+        
+        box = self.steps_table_col_box(col_size)
+        box.add_widget(self.steps_table_col(text,button))
+        grid.add_widget(box)
+        
+        return grid
+
+        
+    def steps_table_col_box(self,size):
+        
+            return MDBoxLayout(size_hint= size,
+                               pos_hint={"left": 1, "y": 0})
+        
+        
+    def steps_table_col(self, text, button=False):
+        
+        if button:
+            
+            return MDRaisedButton(
+                text=text,
+                md_bg_color=self.theme_cls.primary_dark,
+                size_hint = (1,.8),
+                on_release = lambda x=text: self.step_edit(x.text))
+        
+        else:
+            return Label(text=text,
+                         size_hint = (1,.8))
+
+
+    def step_new(self):
+        '''
+        create a new step
+        '''
+        # TODO: make sure codes are unique
+
+    def step_code_unique_check(self):
+        '''
+        check to make sure the entered code doesn't already exists
+        '''
+        
+        
+    def step_edit(self,step_code):
+        '''
+        screen to edit or delete a step
+        input: unique step code
+        
+        '''
+        # activate the step edit screen
+        self.set_screen(self.StepEditScreenName)
+        
+        # get the dict values for the selected step
+        current_step = [ sub['Code'] == step_code for sub in self.wk_piece ]
+        self.wk_step = list(compress(self.wk_piece, current_step))
+        step = self.wk_step[0]
+        
+        # set text box values based on the step
+        self.step_set_text(step)        
+
+    def step_set_text(self,step):
+        '''
+        set peice to saved values
+        '''
+        self.screen_step_edit.ids.code_entry.text = step['Code']
+        self.screen_step_edit.ids.action_entry.text = step['Action']
+        self.screen_step_edit.ids.start_entry.text = str(step['StartRow'])
+        self.screen_step_edit.ids.times_entry.text = str(step['HowManyTimes'])
+        self.screen_step_edit.ids.often_entry.text = str(step['HowOften'])
+        self.screen_step_edit.ids.font_entry.text = step['FontColor']
+
+
+    def step_int_type_check(self):
+
+        if self.screen_step_edit.ids.start_entry.text.isnumeric() == False:
+            self.screen_step_edit.ids.start_entry.error = True
+
+        if self.screen_step_edit.ids.often_entry.text.isnumeric() == False:
+            self.screen_step_edit.ids.often_entry.error = True
+
+        if self.screen_step_edit.ids.times_entry.text.isnumeric() == False:
+            self.screen_step_edit.ids.times_entry.error = True
+            
+            return 
+
+            
+    def step_save(self,step):
+        
+        self.step_int_type_check()
+        
+        if (self.screen_step_edit.ids.start_entry.error == False and 
+            self.screen_step_edit.ids.often_entry.error == False and 
+            self.screen_step_edit.ids.times_entry.error == False):
+            
+            step['Code'] = self.screen_step_edit.ids.code_entry.text
+            step['Action'] = self.screen_step_edit.ids.action_entry.text
+            step['StartRow'] = int(self.screen_step_edit.ids.start_entry.text)
+            step['HowManyTimes'] = int(self.screen_step_edit.ids.times_entry.text)
+            step['HowOften'] = int(self.screen_step_edit.ids.often_entry.text)
+            step['FontColor'] = self.screen_step_edit.ids.font_entry.text
+            
+            self.write_projects()  
+            self.step_exit()
+
+
+    def step_exit(self):
+        '''
+        exit the step edit menu back to the piece listing
+        '''
+        
+        self.piece_build(self.wk_piece_name)
+
+        
 # =============================================================================
 # gui build - root screen
 # =============================================================================
@@ -287,63 +613,10 @@ class MainApp(MDApp):
             self.menu_build(self.piece_menu_labels) 
             
             self.wk_piece = self.wk_project['Pieces'][piece_name]
-
-            self.steps_table_build()
+            # self.wk_piece_name = 
+            self.steps_table_build(self.wk_piece)
+            # self.steps_steps_table_build()
             # Snackbar(text=piece_name).open()
-    
-
-    def steps_table_build(self):
-        
-        table_rows = []
-        for step in self.wk_piece:
-            table_rows.append(
-                (step['Code'],
-                 step['Action'],
-                 step['HowManyTimes'],
-                 step['HowOften'],
-                 step['StartRow'],
-                 step['FontColor'],
-                 step['NumRows'],
-                 step['EndOnRow'],)
-                )
-           
-        self.data_tables = MDDataTable(
-            # id='datatable',
-            size_hint=(0.7, 0.6),
-            use_pagination=True,
-            check=True,
-            # name column, width column, sorting function column(optional)
-            column_data=[
-                ("Code", dp(40)),
-                ("Action", dp(100)),
-                ("How Many Times", dp(20)),
-                ("How Often", dp(20)),
-                ("Start Row", dp(20)),
-                ("Font Color", dp(20)),
-                ("Num Rows", dp(20)),
-                ("End on Row", dp(20)),
-            ],
-            row_data = table_rows
-        )
-        self.data_tables.bind(on_row_press=self.on_row_press)
-        self.data_tables.bind(on_check_press=self.on_check_press)
-
-        self.screen_table.ids.box.clear_widgets()
-        self.screen_table.ids.box.add_widget(self.data_tables)
-        
-
-
-    def on_row_press(self, instance_table, instance_row):
-        '''Called when a table row is clicked.'''
-        # Snackbar(text=instance_row).open()
-        print(instance_table, instance_row)
-
-    def on_check_press(self, instance_table, current_row):
-        '''Called when the check box in the table row is checked.'''
-        # Snackbar(text=current_row).open()
-
-        print(instance_table, current_row)
-
 
 
 
@@ -365,7 +638,7 @@ class MainApp(MDApp):
         # create variables to access ids on each page
         self.screen_list = self.root.ids.sm.get_screen(self.ListScreenName)
         self.screen_table = self.root.ids.sm.get_screen(self.TableScreenName)
-
+        self.screen_step_edit = self.root.ids.sm.get_screen(self.StepEditScreenName)
         # build the main page
         self.root_build()
 
