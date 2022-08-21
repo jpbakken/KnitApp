@@ -66,8 +66,6 @@ kv = '''
         ScrollView:
             MDList:
                 id: list   
-                   
-
 
 <TableScreen>:
     name: 'table'
@@ -76,15 +74,11 @@ kv = '''
         id:box
         size_hint: (.9, .6)
         pos_hint: {'center_x':.5, 'center_y':.5}
-                        
-
 
         ScrollView:
             MDList:
                 id: list   
                 
-                        
-                        
 <StepEditScreen>:
     name: 'stepedit'
 
