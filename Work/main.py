@@ -104,7 +104,6 @@ class MainApp(MDApp):
 
         self.root= Builder.load_string(kv.main_screen)
         self.step_edit_layout = Builder.load_string(kv.step_edit_screen)
-        self.step_edit_button = Builder.load_string(kv.step_edit_button)
 
     def set_vars(self):
         """
@@ -244,7 +243,7 @@ class MainApp(MDApp):
         '''
         what to do when an item in the list object is released
         
-        self.screen_name is set in the _build functions for each screen
+        self.screen_name is set in the _build functions for screens
         '''
         
         if self.screen_name == self.RootScreenName:
@@ -271,6 +270,8 @@ class MainApp(MDApp):
         '''
         self.screen_name = self.RootScreenName  
         self.toolbar_title = 'Projects'
+        self.widget_visible(self.root.ids.header)
+
 
         self.read_projects()
         
@@ -293,6 +294,11 @@ class MainApp(MDApp):
             what happens when list item and menus are clicked 
 
         '''
+        
+        # show and clear anything left in the widget
+        self.widget_visible(self.root.ids.content)
+        self.widget_visible(self.root.ids.header)
+
         # set variables for the selected working project
         self.wk_project_vars(project_name)
 
@@ -316,12 +322,7 @@ class MainApp(MDApp):
 # =============================================================================
 # gui build - piece page (listing steps)    
 # =============================================================================
-
-                                         
-
-        
-
-    def piece_steps_edit_build(self,piece_name):
+    def piece_steps_edit_build(self, piece_name):
         '''
         '''
         
@@ -330,16 +331,16 @@ class MainApp(MDApp):
         
         # update the toolbar title and menu items
         self.menu_build(self.piece_menu_labels) 
-
+        
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content)
-        # self.widget_visible(self.root.ids.header)
+        self.widget_visible(self.root.ids.header)
 
 
         # create the containers for displaying piece edit screens
         self.piece_cols = MDGridLayout(cols = 3)
         self.piece_lcol = MDGridLayout(size_hint = (.2,1),
-                                       cols = 1,)
+                                        cols = 1,)
 
         self.piece_cols.add_widget(self.piece_lcol)
         
@@ -477,7 +478,10 @@ class MainApp(MDApp):
             
             self.write_projects()  
 
-        
+    def on_request_close(self, *args):
+        self.textpopup(title='Exit', text='Are you sure?')
+        return True
+  
         
 # =============================================================================
 # build application
