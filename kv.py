@@ -39,6 +39,23 @@ MDGridLayout:
             id: content
             size_hint_y: .9
             cols: 1
+            
+            MDGridLayout:
+                id: content_cols
+                cols:3
+                
+                MDGridLayout: # lcol
+                    id: content_col
+                    size_hint: (.2, 1)
+                    cols: 1
+                    
+                MDGridLayout:
+                    id: content_buff
+                    size_hint: (.05,1)
+                    
+                MDGridLayout: # rcol
+                    id: content_main
+                    cols: 1
 
         # buffer area to the right of the content panel
         MDBoxLayout:
@@ -73,10 +90,12 @@ MDGridLayout:
     MDTextField:
         id: code_entry
         hint_text: 'Code'
-        helper_text: 'There can be only one...code must be unique'
+        helper_text: 'There can be only one...code must be unique within a piece'
+        helper_text_mode: 'on_error'
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
+        on_focus: app.step_save()
 
     MDTextField:
         id: action_entry
@@ -85,6 +104,8 @@ MDGridLayout:
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
+        on_focus: app.step_save()
+
     MDTextField:
         id: start_entry
         hint_text: 'Start Row'
@@ -93,7 +114,7 @@ MDGridLayout:
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
-        # on_text_validate: app.step_int_type_check
+        on_focus: app.step_save()
 
     MDTextField:
         id: often_entry
@@ -103,6 +124,7 @@ MDGridLayout:
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
+        on_focus: app.step_save()
 
     MDTextField:
         id: times_entry
@@ -112,12 +134,13 @@ MDGridLayout:
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
+        on_focus: app.step_save()
 
-    MDTextField:
+    MDRaisedButton:
         id: font_entry
-        hint_text: 'Font Color'
-        helper_text: 'Font color for the step when working the project'
+        text: 'Step Text Color'
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        #size_hint_x: None
-        width: 200
+        on_release: app.open_color_picker()
+
+
 '''
