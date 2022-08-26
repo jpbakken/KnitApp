@@ -6,6 +6,7 @@ Created on Sun Aug 21 14:37:03 2022
 @author: jpbakken
 """
 
+
 main_screen = '''
 #:kivy 1.8.0
 
@@ -17,18 +18,18 @@ MDGridLayout:
         id: toolbar
         title: 'Menu Title'
         pos_hint: {'center_x':0.5, 'top':1}
-    
+
     # buffer area above the content panel
     Label:
         id: header
         size_hint_y: .05
         pos_hint: {'center_x':0.5, 'top':1}
 
-    
+
     # grid add buffer areas to the sides
     MDGridLayout:
-        cols:3
-        
+        cols: 3
+
         # buffer area to the left of the content panel
         MDBoxLayout:
             size_hint_x: .05
@@ -36,8 +37,26 @@ MDGridLayout:
         # main content area
         MDGridLayout:
             id: content
+            size_hint_y: .9
             cols: 1
             
+            MDGridLayout:
+                id: content_cols
+                cols:3
+                
+                MDGridLayout: # lcol
+                    id: content_col
+                    size_hint: (.2, 1)
+                    cols: 1
+                    
+                MDGridLayout:
+                    id: content_buff
+                    size_hint: (.05,1)
+                    
+                MDGridLayout: # rcol
+                    id: content_main
+                    cols: 1
+
         # buffer area to the right of the content panel
         MDBoxLayout:
             size_hint_x: .05
@@ -47,7 +66,17 @@ MDGridLayout:
         size_hint_y: .05
         # md_bg_color: app.theme_cls.primary_dark
 
-        
+
+'''
+
+step_edit_button = '''
+
+MDRaisedButton
+    text: 'Edit Steps'
+    # size_hint: (1,.8)        
+    pos_hint: {'center_x': .5, 'center_y': .5}
+    on_release: app.piece_steps_edit_build()
+
 '''
 
 step_edit_screen = '''
@@ -57,23 +86,27 @@ MDGridLayout:
     cols: 1
     size_hint: (.6,.8)
     pos_hint: {'center_x': .5, 'center_y': .5}
-        
-    MDTextField: 
+
+    MDTextField:
         id: code_entry
         hint_text: 'Code'
-        helper_text: 'There can be only one...code must be unique'
+        helper_text: 'There can be only one...code must be unique within a piece'
+        helper_text_mode: 'on_error'
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
-        
-    MDTextField: 
+        on_focus: app.step_save()
+
+    MDTextField:
         id: action_entry
         hint_text: 'Action'
         helper_text: 'Desribe the step'
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
-    MDTextField: 
+        on_focus: app.step_save()
+
+    MDTextField:
         id: start_entry
         hint_text: 'Start Row'
         helper_text: 'Start row must be a number'
@@ -81,18 +114,19 @@ MDGridLayout:
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
-        # on_text_validate: app.step_int_type_check
-        
-    MDTextField: 
+        on_focus: app.step_save()
+
+    MDTextField:
         id: often_entry
         hint_text: 'How Often to repeat the step'
         helper_text: 'How often must be a number'
-        helper_text_mode: 'on_error'                
+        helper_text_mode: 'on_error'
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
-        
-    MDTextField: 
+        on_focus: app.step_save()
+
+    MDTextField:
         id: times_entry
         hint_text: 'How Many Times to repeat the step'
         helper_text: 'How many times must be a number'
@@ -100,12 +134,13 @@ MDGridLayout:
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
         #size_hint_x: None
         width: 200
-        
-    MDTextField: 
+        on_focus: app.step_save()
+
+    MDRaisedButton:
         id: font_entry
-        hint_text: 'Font Color'
-        helper_text: 'Font color for the step when working the project'
+        text: 'Step Text Color'
         pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        #size_hint_x: None
-        width: 200
+        on_release: app.open_color_picker()
+
+
 '''

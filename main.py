@@ -13,23 +13,25 @@ Created on Sat Aug 13 15:09:47 2022
 @author: jpbakken
 """
 import json
+from typing import Union
+
 from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.list import OneLineListItem
-from kivy.uix.label import Label
+from kivymd.uix.pickers import MDColorPicker
+
 from kivymd.uix.snackbar import Snackbar
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.list import MDList
-from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton
-from itertools import compress
+# from itertools import compress
 import kv
 
-
-
+# from kivy.uix.label import Label
+# from kivymd.uix.gridlayout import MDGridLayout
+# from kivymd.uix.boxlayout import MDBoxLayout
 
 
 class MainApp(MDApp):
@@ -66,32 +68,34 @@ class MainApp(MDApp):
 
     def read_projects(self):
         try:
-            with open(self.data_dir + '/projects.json') as json_file:     
+            with open(self.data_dir + '/projects.json', 'r') as json_file:     
                   self.projects = json.load(json_file)
+                  # print(self.projects)
         except:
-            with open('data/projects.json') as json_file:     
+            with open('data/projects.json', 'r') as json_file:     
                   self.projects = json.load(json_file)
              
     def wk_project_vars(self,project_name):
         '''
         set working project variables
         '''        
-        self.wk_project = self.projects[project_name]
-        self.wk_project_name = project_name
-
         self.toolbar_title = project_name        
         self.screen_name = self.ProjectScreenName
 
+        self.wk_project = self.projects[project_name]
+        self.wk_project_name = project_name
+
         self.wk_pieces = self.wk_project['Pieces'].keys()
+
         
-    def wk_piece_vars(self,piece_name):
+    def wk_piece_vars(self,piece_name,selected_piece_idx = 0):
         
         self.toolbar_title = self.wk_project_name + ': ' + piece_name
         self.screen_name = self.PieceScreenName
 
         self.wk_piece_name = piece_name
         self.wk_piece = self.wk_project['Pieces'][piece_name]
-        self.wk_step = self.wk_piece[0]
+        self.wk_step = self.wk_piece[selected_piece_idx]
 
 # =============================================================================
 # class variables
@@ -103,12 +107,12 @@ class MainApp(MDApp):
         '''
         
         self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "BlueGray"
+        self.theme_cls.primary_palette = "Gray"
+        self.theme_cls.primary_hue = '500'
 
 
-        self.root= Builder.load_string(kv.screen)
+        self.root= Builder.load_string(kv.main_screen)
         self.step_edit_layout = Builder.load_string(kv.step_edit_screen)
-
 
     def set_vars(self):
         """
@@ -165,6 +169,14 @@ class MainApp(MDApp):
         widget.clear_widgets()
         widget.disabled = False
         widget.opacity = 1
+        
+    def clear_layout(self):
+        self.widget_visible(self.root.ids.header)
+        self.root.ids.header.text = ''
+        self.widget_visible(self.root.ids.content_col)
+        self.widget_visible(self.root.ids.content_main)
+
+        
 
 # =============================================================================
 # gui build - menu
@@ -219,12 +231,18 @@ class MainApp(MDApp):
 # gui build - list of items in scrollview
 # =============================================================================
 
-    def list_build(self,items):
+    def item_list_build(self, items, widget):
         '''
+        build a clickable scroll list of test items
+        
+        Input:
+            a list of text items
+        Action:
+            self.item_list_on_release('item text')
         '''
         
         # show an empty content area
-        self.widget_visible(self.root.ids.content)
+        self.widget_visible(self.root.ids.content_main)
         
         # create list and add the items
         mdlist = MDList()        
@@ -234,28 +252,28 @@ class MainApp(MDApp):
             mdlist.add_widget(
                 OneLineListItem(
                     text="{}".format(i),
-                    on_release=lambda x=i: self.list_on_release(x.text),))
+                    on_release=lambda x=i: self.item_on_release(x.text),))
                         
         # add list to the scroll view
         scroll = ScrollView()
         scroll.add_widget(mdlist)
 
         # add widget to the content area
-        self.root.ids.content.add_widget(scroll)
+        widget.add_widget(scroll)
 
 
-    def list_on_release(self, text_item):
+    def item_on_release(self, text_item):
         '''
         what to do when an item in the list object is released
         
-        self.screen_name is set in the _build functions for each screen
+        self.screen_name is set in the _build functions for screens
         '''
         
         if self.screen_name == self.RootScreenName:
             self.project_build(text_item)
             
         elif self.screen_name == self.ProjectScreenName:
-            self.piece_build(text_item)
+            self.piece_steps_edit_build(text_item)
         
         else:
             Snackbar(text=text_item).open()
@@ -275,12 +293,16 @@ class MainApp(MDApp):
         '''
         self.screen_name = self.RootScreenName  
         self.toolbar_title = 'Projects'
+        
+        self.clear_layout()
+
 
         self.read_projects()
         
         self.menu_build(self.root_menu_labels)
         
-        self.list_build(self.projects.keys())
+        self.item_list_build(self.projects.keys(),
+                             self.root.ids.content_main)
 
 
 # =============================================================================
@@ -297,6 +319,10 @@ class MainApp(MDApp):
             what happens when list item and menus are clicked 
 
         '''
+        
+        # show and clear anything left in the main layout
+        self.clear_layout()
+
         # set variables for the selected working project
         self.wk_project_vars(project_name)
 
@@ -304,7 +330,8 @@ class MainApp(MDApp):
         self.menu_build(self.project_menu_labels)            
 
         # rebuild self.root.ids.list
-        self.list_build(self.wk_pieces)
+        self.item_list_build(self.wk_pieces,
+                             self.root.ids.content_main)
         
         
     def project_menu_callback(self, text_item):
@@ -314,76 +341,63 @@ class MainApp(MDApp):
 
         else:
             Snackbar(text=text_item).open()
+    
+    
 
 # =============================================================================
 # gui build - piece page (listing steps)    
 # =============================================================================
-    def piece_build(self, piece_name):
+    def piece_steps_edit_build(self, piece_name):
         '''
         '''
+        
         # set variables for the selected working piece
         self.wk_piece_vars(piece_name)
         
         # update the toolbar title and menu items
         self.menu_build(self.piece_menu_labels) 
-
+        
         # show and clear anything left in the widget
-        self.widget_visible(self.root.ids.content)
-        
-        
-        # self.root.ids.content.add_widget(MDGridLayout(cols=1))
-        
-        # create the containers for displaying piece edit screens
-        self.piece_cols = MDGridLayout(cols = 3)
-        self.piece_lcol = MDGridLayout(size_hint = (.2,1),
-                                       cols = 1,)
-
-        self.piece_cols.add_widget(self.piece_lcol)
-        
-        # add box for padding buffer
-        self.piece_cols.add_widget(MDBoxLayout(size_hint = (.05,1)))
-
-        self.piece_rcol = MDBoxLayout(
-            # md_bg_color = self.theme_cls.primary_light,
-            )       
-        self.piece_cols.add_widget(self.piece_rcol)
-
+        self.clear_layout()
                 
         # build the code buttons and edit screen
-        self.steps_code_list_build()
-        self.step_edit_build()
+        self.steps_code_buttons_build()
+        self.step_edit_fields_build()
         
-        # add widget to the content area
-        self.root.ids.content.add_widget(self.piece_cols)
-
 
     def piece_menu_callback(self, text_item):
     
         if text_item == 'Back to Project Pieces':
-            self.project_build(self.wk_project_name)
+            
+            self.step_save()
+            
+            if self.validation_error == False:
+                self.project_build(self.wk_project_name)
         
         else:
             Snackbar(text=text_item).open()
 
 
-
-    def steps_code_list_build(self):
+    def steps_code_buttons_build(self):
                 
         # show and clear anything left in the widget
-        self.widget_visible(self.piece_lcol)
+        self.widget_visible(self.root.ids.content_col)
 
         # create list and add the items
         mdlist = MDList()     
         
         for piece in self.wk_piece:
             
+            # print(piece['FontColor'])
+            
             code = piece['Code']
             
             button = MDRaisedButton(
                         text=code,
-                        # md_bg_color=self.theme_cls.primary_dark,
                         size_hint = (1,.8),
-                        on_release = lambda x=code: self.step_edit(x.text))
+                        on_release = lambda x=code: self.step_edit(x.text),
+                        md_bg_color = piece['FontColor'],
+                        )
                     
             mdlist.add_widget(button)
                     
@@ -391,11 +405,9 @@ class MainApp(MDApp):
         scroll = ScrollView()
         scroll.add_widget(mdlist)
         
-        self.piece_lcol.add_widget(scroll)
+        self.root.ids.content_col.add_widget(scroll)
         
        
-        return 
-
     def step_edit(self,step_code):
         '''
         screen to edit or delete a step
@@ -407,35 +419,39 @@ class MainApp(MDApp):
             self.step_set_text(step_code)
             
         
-    def step_edit_build(self):
-
+    def step_edit_fields_build(self):
+        '''
+        '''
         # show and clear anything left in the widget
-        self.widget_visible(self.piece_rcol)
+        self.widget_visible(self.root.ids.content_main)
         
         # set the header and content layout and 
-        self.piece_rcol.add_widget(self.step_edit_layout)     
-        self.root.ids.header.text = 'Edit piece: ' + self.wk_step['Code']
+        self.root.ids.content_main.add_widget(self.step_edit_layout)     
 
         self.step_set_text(self.wk_step['Code'])        
 
-        # # get the step data for the current step
-        # current_step = [ sub['Code'] == self.wk_step['Code'] for sub in self.wk_piece ]
-        # self.wk_step = list(compress(self.wk_piece, current_step))[0]
+    def get_work_step_dict(self,step_code):
+        '''
+        '''
+        # get the dict values for the selected step
+        try:
+            wk_step_idx = next(
+                (index for (index, d) in enumerate(
+                    self.wk_piece) if d["Code"] == step_code), -1)
+        except:
+            wk_step_idx = -1
         
-        # # set text box values based on the step
-        # self.step_set_text()        
+        return wk_step_idx
 
-        
     def step_set_text(self, step_code):
         '''
         set peice to saved values
         '''
+        # set variable with the index of the current step
+        self.wk_step_idx = self.get_work_step_dict(step_code)
         
-        # get the dict values for the selected step
-        current_step = [ sub['Code'] == step_code for sub in self.wk_piece ]
-        wk_step = list(compress(self.wk_piece, current_step))
-        self.wk_step = wk_step[0]
-
+        # set variable with the working step dictionary items
+        self.wk_step = self.wk_piece[self.wk_step_idx]
         step = self.wk_step
         
         self.step_edit_layout.ids.code_entry.text = step['Code']
@@ -443,11 +459,15 @@ class MainApp(MDApp):
         self.step_edit_layout.ids.start_entry.text = str(step['StartRow'])
         self.step_edit_layout.ids.times_entry.text = str(step['HowManyTimes'])
         self.step_edit_layout.ids.often_entry.text = str(step['HowOften'])
-        self.step_edit_layout.ids.font_entry.text = step['FontColor']
+        
+        # self.step_edit_layout.ids.font_entry.md_bg_color = step['FontColor']
+        self.root.ids.header.text = 'Edit piece: ' + step['Code']
+
 
     def step_int_type_check(self):
-
-        self.validation_error = False
+        '''
+        check to make sure number fields from the edit text screen are numeric
+        '''
 
         if self.step_edit_layout.ids.start_entry.text.isnumeric() == False:
             self.step_edit_layout.ids.start_entry.error = True
@@ -459,37 +479,90 @@ class MainApp(MDApp):
             self.step_edit_layout.ids.times_entry.error = True
             self.validation_error = True
 
-            return 
 
-    def step_save(self):
+    def step_code_unique_check(self):
+        '''
+        Checks to make sure the step code is unique
+        '''
+        step_code = self.step_edit_layout.ids.code_entry.text
         
+        if (self.get_work_step_dict(step_code) > -1 and 
+            self.get_work_step_dict(step_code) != self.wk_step_idx):
+            
+            self.step_edit_layout.ids.code_entry.error = True
+            self.validation_error = True
+        
+        
+    def step_save(self):
+        '''
+        '''
         step = self.wk_step
         
+        self.validation_error = False
+
         self.step_int_type_check()
+        self.step_code_unique_check()
         
-        if (self.step_edit_layout.ids.start_entry.error == False and 
-            self.step_edit_layout.ids.often_entry.error == False and 
-            self.step_edit_layout.ids.times_entry.error == False):
+        if self.validation_error == False:
             
             step['Code'] = self.step_edit_layout.ids.code_entry.text
             step['Action'] = self.step_edit_layout.ids.action_entry.text
             step['StartRow'] = int(self.step_edit_layout.ids.start_entry.text)
             step['HowManyTimes'] = int(self.step_edit_layout.ids.times_entry.text)
             step['HowOften'] = int(self.step_edit_layout.ids.often_entry.text)
-            step['FontColor'] = self.step_edit_layout.ids.font_entry.text
+            
+            # update the piece with step values and write the changes
+            self.wk_piece[self.wk_step_idx] = step
+            
+            self.wk_project['Pieces'][self.wk_piece_name][self.wk_step_idx] = step
             
             self.write_projects()  
+            
+            self.wk_project_vars(self.wk_project_name)
+            self.wk_piece_vars(self.wk_piece_name, self.wk_step_idx)
+            
+            # update the buttons
+            self.steps_code_buttons_build()
+            
+    
+    def open_color_picker(self):
+        color_picker = MDColorPicker(size_hint=(0.45, 0.85),
+                                     )
+        color_picker.open()
+        color_picker.bind(
+            on_select_color=self.on_select_color,
+            on_release=self.get_selected_color,
+        )
 
+
+    def update_color(self, color: list) -> None:
         
+        self.wk_step['FontColor'] = color
+        # self.step_edit_layout.ids.font_entry.md_bg_color = color
+        self.step_save()
+
+
+    def get_selected_color(
+        self,
+        instance_color_picker: MDColorPicker,
+        type_color: str,
+        selected_color: Union[list, str],
+    ):
+
+        self.update_color(selected_color[:-1] + [1])
+
+    def on_select_color(self, instance_gradient_tab, color: list) -> None:
+        '''Called when a gradient image is clicked.'''
+
         
 # =============================================================================
 # build application
 # =============================================================================
     def build(self):
+        '''
+        '''
         self.set_vars()   
         self.set_vars_layout()
-
-        
         self.root_build()
         
 
