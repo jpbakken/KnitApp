@@ -144,3 +144,30 @@ MDGridLayout:
 
 
 '''
+
+
+settings_json = '''
+[
+    {
+        "type": "string",
+        "title": "Theme Style",
+        "desc": "Choose the theme style: Light/Dark",
+        "section": "App Settings",
+        "key": "style"
+    },
+    {
+        "type": "string",
+        "title": "Theme Primary Palette",
+        "desc": "Choose the base color: Red, Pink, Purple, DeepPurple, Indigo, Blue, LightBlue, Cyan, Teal, Green, LightGreen, Lime, Yellow, Amber, Orange, DeepOrange, Brown, Gray, BlueGray",
+        "section": "App Settings",
+        "key": "palette"
+    },
+    {
+        "type": "string",
+        "title": "Theme Primary Hue",
+        "desc": "Choose the hue: 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, A100, A200, A400, A700",
+        "section": "App Settings",
+        "key": "hue"
+    }
+]
+'''

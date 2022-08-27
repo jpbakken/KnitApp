@@ -14,6 +14,7 @@ Created on Sat Aug 13 15:09:47 2022
 """
 import json
 from typing import Union
+import os
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -21,6 +22,7 @@ from kivy.metrics import dp
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.list import OneLineListItem
 from kivymd.uix.pickers import MDColorPicker
+from kivy.uix.settings import SettingsWithTabbedPanel
 
 from kivymd.uix.snackbar import Snackbar
 from kivy.uix.scrollview import ScrollView
@@ -35,6 +37,47 @@ import kv
 
 
 class MainApp(MDApp):
+    use_kivy_settings = False
+
+# =============================================================================
+# settings page
+# =============================================================================
+    def build_config(self, config):
+        """
+        Set the default values for the configs sections.
+        """
+        config.setdefaults('App Settings', {'style': 'Dark', 
+                                            'palette': 'Gray',
+                                            'hue': '500'})
+
+    def build_settings(self, settings):
+        """
+        Add our custom section to the default configuration object.
+        """
+        # We use the string defined above for our JSON, but it could also be
+        # loaded from a file as follows:
+        #     settings.add_json_panel('My Label', self.config, 'settings.json')
+        settings.add_json_panel('App Settings', self.config, data=kv.settings_json)
+
+    def on_config_change(self, config, section, key, value):
+        """
+        Respond to changes in the configuration.
+        """
+
+        if section == 'App Settings':
+            if key == "style":
+                self.theme_cls.theme_style = value
+            elif key == 'palette':
+                self.theme_cls.primary_palette = value
+            elif key == 'hue':
+                self.theme_cls.primary_hue = value
+
+
+    def close_settings(self, settings=None):
+        """
+        The settings panel has been closed.
+        """
+        super(MainApp, self).close_settings(settings)
 
 # =============================================================================
 # data methods
@@ -66,6 +109,17 @@ class MainApp(MDApp):
             
         self.read_projects()
 
+    def write_substeps(self):
+        
+        # create the path if it doesn't exist
+        if not os.path.exists(self.wk_piece_dir):
+            os.makedirs(self.wk_piece_dir)
+            
+        with open(self.wk_piece_path, 'w') as f:
+            json.dump(self.wk_substeps, f)
+            
+        self.read_projects()
+
     def read_projects(self):
         try:
             with open(self.data_dir + '/projects.json', 'r') as json_file:     
@@ -89,12 +143,30 @@ class MainApp(MDApp):
 
         
     def wk_piece_vars(self,piece_name,selected_piece_idx = 0):
-        
+
         self.toolbar_title = self.wk_project_name + ': ' + piece_name
         self.screen_name = self.PieceScreenName
 
         self.wk_piece_name = piece_name
         self.wk_piece = self.wk_project['Pieces'][piece_name]
+        
+        self.wk_piece_dir = '{0}/{1}'.format(self.data_dir,
+                                             self.wk_project_name)
+        
+        self.wk_piece_file = '{}.json'.format(self.wk_piece_name)
+        self.wk_piece_path = os.path.join(self.wk_piece_dir,self.wk_piece_file)
+        
+        self.wk_substeps = []
+
+
+        self.wk_project['Substeps'][piece_name] = []
+        # try:
+        #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
+            
+        # except KeyError:
+        #     self.wk_project['Substeps'][piece_name] = []
+        #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
+
         self.wk_step = self.wk_piece[selected_piece_idx]
 
 # =============================================================================
@@ -105,10 +177,14 @@ class MainApp(MDApp):
         '''
         define variables that are used in layouts
         '''
-        
-        self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "Gray"
-        self.theme_cls.primary_hue = '500'
+        self.settings_cls = SettingsWithTabbedPanel
+
+        self.theme_cls.theme_style = self.config.get(self.app_settings_label,
+                                                     'style')
+        self.theme_cls.primary_palette = self.config.get(self.app_settings_label,
+                                                     'palette')
+        self.theme_cls.primary_hue = self.config.get(self.app_settings_label,
+                                                     'hue')
 
 
         self.root= Builder.load_string(kv.main_screen)
@@ -119,33 +195,40 @@ class MainApp(MDApp):
         Define variables that can be used throughout
         """
         self.set_data_dir()
+        
+        self.app_settings_label = 'App Settings'
 
         self.menu_item_settings = 'Settings'
 
-        self.project_menu_item_1 = 'Add Piece'
-        self.project_menu_item_2 = 'Back to Projects'
-        self.project_menu_item_3 = 'Clear Box Widget'
+        self.root_menu_create_project = 'Create New Project'
+        # self.root_menu_item_2 = 'root_menu_item_2'
+
+        self.root_menu_labels = [self.root_menu_create_project,
+                                 # self.root_menu_item_2,
+                                  self.menu_item_settings
+                                  ]
+
+        self.project_menu_add_piece = 'Add New Piece'
+        self.project_menu_edit_name = 'Edit Project Name'
+        self.project_menu_back_to_root = 'Back to Projects'
         
         
-        self.project_menu_labels = [self.project_menu_item_1,
-                                    self.project_menu_item_2,
-                                    self.project_menu_item_3,
-                                    self.menu_item_settings
+        self.project_menu_labels = [self.project_menu_add_piece,
+                                    self.project_menu_edit_name,
+                                    self.project_menu_back_to_root,
+                                    # self.menu_item_settings,
                                     ]
 
-        self.piece_menu_item_1 = 'Add Step'
-        self.piece_menu_item_2 = 'Back to Project Pieces'
+        self.piece_menu_add_step = 'Add New Step'
+        self.piece_menu_edit_name = 'Edit Piece Name'
+        self.piece_menu_back_to_project = 'Back to Project Pieces'
         
-        self.piece_menu_labels = [self.piece_menu_item_1,
-                                  self.piece_menu_item_2,
-                                  self.menu_item_settings]
+        self.piece_menu_labels = [self.piece_menu_add_step,
+                                  self.piece_menu_edit_name,
+                                  self.piece_menu_back_to_project,
+                                  # self.menu_item_settings,
+                                  ]
         
-        self.root_menu_item_1 = 'New Project'
-        self.root_menu_item_2 = 'Clear Box Widget'
-
-        self.root_menu_labels = [self.root_menu_item_1,
-                                 self.root_menu_item_2,
-                                  self.menu_item_settings]
         
         self.toolbar_title = 'Projects'
         
@@ -181,6 +264,29 @@ class MainApp(MDApp):
 # =============================================================================
 # gui build - menu
 # =============================================================================
+    def menu_build(self, menu_labels):
+        '''
+        '''
+        
+        menu_items = [
+            {
+                "viewclass": "OneLineListItem",
+                "text": i,
+                "height": dp(56),
+                "on_release": lambda x=i: self.menu_callback(x),
+              } for i in menu_labels
+        ]
+        
+        self.menu = MDDropdownMenu(items=menu_items,
+                                        width_mult=4)
+        
+        # set action items for the menu
+        self.root.ids.toolbar.left_action_items = [
+            ["menu", lambda x: self.menu_open(x)]]
+        
+        self.root.ids.toolbar.title = self.toolbar_title
+
+
     def menu_open(self, button):
         self.menu.caller = button
         self.menu.open()
@@ -205,27 +311,53 @@ class MainApp(MDApp):
             Snackbar(text=text_item).open()
 
 
-    def menu_build(self, menu_labels):
+    def root_menu_callback(self, text_item):
+        '''
+        '''
+        if text_item == self.root_menu_create_project:
+            Snackbar(text=text_item).open()
+            
+        else:
+            Snackbar(text=text_item).open()
+        
+
+    def project_menu_callback(self, text_item):
         '''
         '''
         
-        menu_items = [
-            {
-                "viewclass": "OneLineListItem",
-                "text": i,
-                "height": dp(56),
-                "on_release": lambda x=i: self.menu_callback(x),
-              } for i in menu_labels
-        ]
+        if text_item == self.project_menu_add_piece:
+            Snackbar(text=text_item).open()
         
-        self.menu = MDDropdownMenu(items=menu_items,
-                                        width_mult=4)
-        
-        # set action items for the menu
-        self.root.ids.toolbar.left_action_items = [
-            ["menu", lambda x: self.menu_open(x)]]
-        
-        self.root.ids.toolbar.title = self.toolbar_title
+        elif text_item == self.project_menu_edit_name:
+            Snackbar(text=text_item).open()
+
+        elif text_item == self.project_menu_back_to_root:
+            self.root_build()
+
+        else:
+            Snackbar(text=text_item).open()
+    
+
+    def piece_menu_callback(self, text_item):
+        '''
+        '''
+
+        if text_item == self.piece_menu_add_step:
+            Snackbar(text=text_item).open()
+             
+        elif text_item == self.piece_menu_edit_name:
+            Snackbar(text=text_item).open()
+             
+        elif text_item == self.piece_menu_back_to_project:
+            
+            self.step_save()
+            
+            if self.validation_error == False:
+                self.project_build(self.wk_project_name)
+            
+        else:
+            Snackbar(text=text_item).open()
+
 
 # =============================================================================
 # gui build - list of items in scrollview
@@ -329,20 +461,86 @@ class MainApp(MDApp):
         # update the toolbar title and menu items
         self.menu_build(self.project_menu_labels)            
 
-        # rebuild self.root.ids.list
+        self.root.ids.header.text = 'Select a step to edit'
+        
+        # build the list of pieces
         self.item_list_build(self.wk_pieces,
                              self.root.ids.content_main)
         
+        # build the edit pieces buttons
+        self.project_pieces_buttons_build()
         
-    def project_menu_callback(self, text_item):
-        
-        if text_item == 'Back to Projects':
-            self.root_build()
 
-        else:
-            Snackbar(text=text_item).open()
-    
-    
+
+    def project_pieces_buttons_build(self):
+                
+        # show and clear anything left in the widget
+        self.widget_visible(self.root.ids.content_col)
+
+        # create list and add the items
+        mdlist = MDList()
+        column_header = 'Knit a step'
+        # mdlist.add_widget(Label(text='Knit a step',
+        #                         size_hint = (1,.8),
+        #                         ))
+        mdlist.add_widget(
+            OneLineListItem(
+                text=column_header,
+                on_release=lambda x=column_header: self.knit_piece(x),
+                ))
+
+        for piece in self.wk_pieces:
+                        
+            button = MDRaisedButton(
+                        text=piece,
+                        size_hint = (1,.8),
+                        on_release = lambda x=piece: self.knit_piece(x.text),
+                        )
+                    
+            mdlist.add_widget(button)
+                    
+        # add list to the scroll view
+        scroll = ScrollView()
+        scroll.add_widget(mdlist)
+        
+        self.root.ids.content_col.add_widget(scroll)
+
+    def calc_substeps(self):
+        '''
+        '''
+                
+        for idx, step in enumerate(self.wk_piece):
+            StepRow = step['StartRow']
+            HowOften = step['HowOften']
+            HowManyTimes = step['HowManyTimes']
+            Code = step['Code']
+            Action = step['Action']
+            FontColor = step['FontColor']
+            
+            for substep in range(HowManyTimes):
+                self.wk_substeps.append({'Step Row': StepRow,
+                                 'Code': Code,
+                                 'Action': Action,
+                                 'FontColor': FontColor})
+                
+                # increment to next row to add
+                StepRow =  StepRow + HowOften
+
+        self.write_projects()
+        self.write_substeps()
+        
+    def knit_piece(self, piece_name):
+        '''
+        '''
+        
+        self.wk_piece_vars(piece_name)
+
+        self.calc_substeps()
+
+        Snackbar(text=piece_name).open()
+
+        
+        
 
 # =============================================================================
 # gui build - piece page (listing steps)    
@@ -364,19 +562,6 @@ class MainApp(MDApp):
         self.steps_code_buttons_build()
         self.step_edit_fields_build()
         
-
-    def piece_menu_callback(self, text_item):
-    
-        if text_item == 'Back to Project Pieces':
-            
-            self.step_save()
-            
-            if self.validation_error == False:
-                self.project_build(self.wk_project_name)
-        
-        else:
-            Snackbar(text=text_item).open()
-
 
     def steps_code_buttons_build(self):
                 
