@@ -28,7 +28,7 @@ from kivymd.uix.snackbar import Snackbar
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.list import MDList
 from kivymd.uix.button import MDRaisedButton
-# from itertools import compress
+from itertools import compress
 import kv
 
 # from kivy.uix.label import Label
@@ -109,13 +109,21 @@ class MainApp(MDApp):
             
         self.read_projects()
 
-    def write_substeps(self):
+    def write_substeps(self,piece_name):
+        '''
+        '''
+        self.wk_substeps_dir = '{0}/{1}/Substeps'.format(self.data_dir,
+                                                         self.wk_project_name)
         
+        self.wk_substeps_file = '{}.json'.format(piece_name)
+        self.wk_substeps_path = os.path.join(self.wk_substeps_dir,
+                                             self.wk_substeps_file)
+
         # create the path if it doesn't exist
-        if not os.path.exists(self.wk_piece_dir):
-            os.makedirs(self.wk_piece_dir)
+        if not os.path.exists(self.wk_substeps_dir):
+            os.makedirs(self.wk_substeps_dir)
             
-        with open(self.wk_piece_path, 'w') as f:
+        with open(self.wk_substeps_path, 'w') as f:
             json.dump(self.wk_substeps, f)
             
         self.read_projects()
@@ -143,31 +151,16 @@ class MainApp(MDApp):
 
         
     def wk_piece_vars(self,piece_name,selected_piece_idx = 0):
-
+        '''
+        '''
         self.toolbar_title = self.wk_project_name + ': ' + piece_name
         self.screen_name = self.PieceScreenName
 
         self.wk_piece_name = piece_name
         self.wk_piece = self.wk_project['Pieces'][piece_name]
         
-        self.wk_piece_dir = '{0}/{1}'.format(self.data_dir,
-                                             self.wk_project_name)
-        
-        self.wk_piece_file = '{}.json'.format(self.wk_piece_name)
-        self.wk_piece_path = os.path.join(self.wk_piece_dir,self.wk_piece_file)
-        
-        self.wk_substeps = []
-
-
-        self.wk_project['Substeps'][piece_name] = []
-        # try:
-        #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
-            
-        # except KeyError:
-        #     self.wk_project['Substeps'][piece_name] = []
-        #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
-
         self.wk_step = self.wk_piece[selected_piece_idx]
+
 
 # =============================================================================
 # class variables
@@ -244,16 +237,22 @@ class MainApp(MDApp):
 # gui build - general
 # =============================================================================
     def widget_hide(self, widget):
+        '''
+        '''
         widget.disabled = True
         widget.opacity = 0
         widget.clear_widgets()
         
     def widget_visible(self,widget):
+        '''
+        '''
         widget.clear_widgets()
         widget.disabled = False
         widget.opacity = 1
         
     def clear_layout(self):
+        '''
+        '''
         self.widget_visible(self.root.ids.header)
         self.root.ids.header.text = ''
         self.widget_visible(self.root.ids.content_col)
@@ -288,11 +287,15 @@ class MainApp(MDApp):
 
 
     def menu_open(self, button):
+        '''
+        '''
         self.menu.caller = button
         self.menu.open()
 
 
     def menu_callback(self, text_item):
+        '''
+        '''
         self.menu.dismiss()
         
         if text_item == 'Settings':
@@ -329,6 +332,8 @@ class MainApp(MDApp):
             Snackbar(text=text_item).open()
         
         elif text_item == self.project_menu_edit_name:
+            #TODO: changing name requires changing other things/files?
+            
             Snackbar(text=text_item).open()
 
         elif text_item == self.project_menu_back_to_root:
@@ -346,6 +351,8 @@ class MainApp(MDApp):
             Snackbar(text=text_item).open()
              
         elif text_item == self.piece_menu_edit_name:
+            #TODO: changing name requires changing other things?
+
             Snackbar(text=text_item).open()
              
         elif text_item == self.piece_menu_back_to_project:
@@ -471,22 +478,19 @@ class MainApp(MDApp):
         self.project_pieces_buttons_build()
         
 
-
     def project_pieces_buttons_build(self):
-                
+        '''
+        '''
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content_col)
 
         # create list and add the items
         mdlist = MDList()
         column_header = 'Knit a step'
-        # mdlist.add_widget(Label(text='Knit a step',
-        #                         size_hint = (1,.8),
-        #                         ))
         mdlist.add_widget(
             OneLineListItem(
                 text=column_header,
-                on_release=lambda x=column_header: self.knit_piece(x),
+                disabled=True,
                 ))
 
         for piece in self.wk_pieces:
@@ -505,11 +509,15 @@ class MainApp(MDApp):
         
         self.root.ids.content_col.add_widget(scroll)
 
-    def calc_substeps(self):
+    def calc_substeps(self,piece_name):
         '''
         '''
-                
-        for idx, step in enumerate(self.wk_piece):
+               
+        self.wk_substeps = []
+        wk_piece = self.wk_project['Pieces'][piece_name]
+
+        
+        for idx, step in enumerate(wk_piece):
             StepRow = step['StartRow']
             HowOften = step['HowOften']
             HowManyTimes = step['HowManyTimes']
@@ -526,18 +534,29 @@ class MainApp(MDApp):
                 # increment to next row to add
                 StepRow =  StepRow + HowOften
 
-        self.write_projects()
-        self.write_substeps()
+        self.write_substeps(piece_name)
+
+    def get_current_substeps(self,step_row):
         
+        current_substeps = [
+            sub['Step Row'] == step_row for sub in self.wk_substeps]
+        
+        self.step_row_substeps = list(compress(self.wk_substeps,
+                                     current_substeps))
+        
+#TODO: save progress for project/step
+
     def knit_piece(self, piece_name):
         '''
         '''
+        #TODO: if work in progress then calc substeps
+        self.calc_substeps(piece_name)
+        #TODO: else read substeps and set working row
         
-        self.wk_piece_vars(piece_name)
-
-        self.calc_substeps()
-
-        Snackbar(text=piece_name).open()
+        #TODO: open work substeps screen
+        #button to move forward row
+        #button to move back row
+        #button to jump to step
 
         
         
@@ -615,7 +634,7 @@ class MainApp(MDApp):
 
         self.step_set_text(self.wk_step['Code'])        
 
-    def get_work_step_dict(self,step_code):
+    def step_get_work_dict(self,step_code):
         '''
         '''
         # get the dict values for the selected step
@@ -633,7 +652,7 @@ class MainApp(MDApp):
         set peice to saved values
         '''
         # set variable with the index of the current step
-        self.wk_step_idx = self.get_work_step_dict(step_code)
+        self.wk_step_idx = self.step_get_work_dict(step_code)
         
         # set variable with the working step dictionary items
         self.wk_step = self.wk_piece[self.wk_step_idx]
@@ -671,8 +690,8 @@ class MainApp(MDApp):
         '''
         step_code = self.step_edit_layout.ids.code_entry.text
         
-        if (self.get_work_step_dict(step_code) > -1 and 
-            self.get_work_step_dict(step_code) != self.wk_step_idx):
+        if (self.step_get_work_dict(step_code) > -1 and 
+            self.step_get_work_dict(step_code) != self.wk_step_idx):
             
             self.step_edit_layout.ids.code_entry.error = True
             self.validation_error = True
