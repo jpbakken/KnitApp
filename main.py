@@ -28,16 +28,24 @@ from kivymd.uix.snackbar import Snackbar
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.list import MDList
 from kivymd.uix.button import MDRaisedButton
+from kivymd.uix.button import MDFlatButton
+from kivymd.uix.dialog import MDDialog
 from itertools import compress
 import kv
 
 # from kivy.uix.label import Label
 # from kivymd.uix.gridlayout import MDGridLayout
-# from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.boxlayout import MDBoxLayout
+
+class EditProjectPopup(MDBoxLayout):
+    pass
 
 
 class MainApp(MDApp):
     use_kivy_settings = False
+    color_picker = None
+    edit_project_dialog = None
+
 
 # =============================================================================
 # settings page
@@ -332,7 +340,9 @@ class MainApp(MDApp):
             Snackbar(text=text_item).open()
         
         elif text_item == self.project_menu_edit_name:
+            self.project_name_edit_dialog()
             #TODO: changing name requires changing other things/files?
+            # project name unique test, similar to step_code_unique_check
             
             Snackbar(text=text_item).open()
 
@@ -352,6 +362,7 @@ class MainApp(MDApp):
              
         elif text_item == self.piece_menu_edit_name:
             #TODO: changing name requires changing other things?
+            # piece name unique check, similar to step_code_unique_check 
 
             Snackbar(text=text_item).open()
              
@@ -478,6 +489,33 @@ class MainApp(MDApp):
         self.project_pieces_buttons_build()
         
 
+    def project_name_edit_dialog(self):
+        if not self.edit_project_dialog:
+            self.edit_project_dialog = MDDialog(
+                title="Enter new project name:",
+                type="custom",
+                pos_hint = {'center_x': .5, 'top': .9},
+                content_cls=EditProjectPopup(),
+                buttons=[
+                    MDFlatButton(
+                        text="Cancel",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        on_release=self.project_name_edit_dismiss),
+                    MDFlatButton(
+                        text="Save",
+                        theme_text_color="Custom",
+                        text_color=self.theme_cls.primary_color,
+                        # on_release= ,
+                        )
+                    ]
+                )
+            
+        self.edit_project_dialog.open()
+        
+    def project_name_edit_dismiss(self, inst):
+        self.edit_project_dialog.dismiss()
+
     def project_pieces_buttons_build(self):
         '''
         '''
@@ -535,6 +573,18 @@ class MainApp(MDApp):
                 StepRow =  StepRow + HowOften
 
         self.write_substeps(piece_name)
+
+ # def wk_substeps_vars(self,piece_name):
+     
+     # self.wk_substeps = []
+     # self.wk_project['Substeps'][piece_name] = []
+     # try:
+     #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
+         
+     # except KeyError:
+     #     self.wk_project['Substeps'][piece_name] = []
+     #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
+
 
     def get_current_substeps(self,step_row):
         
@@ -634,6 +684,7 @@ class MainApp(MDApp):
 
         self.step_set_text(self.wk_step['Code'])        
 
+
     def step_get_work_dict(self,step_code):
         '''
         '''
@@ -646,6 +697,7 @@ class MainApp(MDApp):
             wk_step_idx = -1
         
         return wk_step_idx
+
 
     def step_set_text(self, step_code):
         '''
@@ -730,33 +782,47 @@ class MainApp(MDApp):
             
     
     def open_color_picker(self):
-        color_picker = MDColorPicker(size_hint=(0.45, 0.85),
-                                     )
-        color_picker.open()
-        color_picker.bind(
+        '''
+        '''
+        self.color_picker = MDColorPicker(
+            size_hint=(0.45, 0.85),
+            default_color=self.wk_step['FontColor'],
+            
+            )
+        self.color_picker.open()
+        self.color_picker.bind(
             on_select_color=self.on_select_color,
             on_release=self.get_selected_color,
         )
 
 
     def update_color(self, color: list) -> None:
-        
+        '''
+        '''
         self.wk_step['FontColor'] = color
         # self.step_edit_layout.ids.font_entry.md_bg_color = color
         self.step_save()
 
 
-    def get_selected_color(
-        self,
-        instance_color_picker: MDColorPicker,
-        type_color: str,
-        selected_color: Union[list, str],
-    ):
-
+    def get_selected_color(self,
+                           instance_color_picker: MDColorPicker,
+                           type_color: str,
+                           selected_color: Union[list, str]):
+        '''
+        '''
         self.update_color(selected_color[:-1] + [1])
+        self.color_picker.dismiss()
+
+
+    def color_picker_dismiss(self,inst):
+        '''
+        '''
+        self.color_picker.dismiss()
 
     def on_select_color(self, instance_gradient_tab, color: list) -> None:
-        '''Called when a gradient image is clicked.'''
+        '''
+        Called when a gradient image is clicked.
+        '''
 
         
 # =============================================================================

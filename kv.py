@@ -10,6 +10,20 @@ Created on Sun Aug 21 14:37:03 2022
 main_screen = '''
 #:kivy 1.8.0
 
+<EditProjectPopup>
+    orientation: "vertical"
+    spacing: "12dp"
+    size_hint_y: None
+    # height: "120dp"
+
+    MDTextField:
+        id: project_name
+        hint_text: "Project Name"
+        text: app.wk_project_name
+        helper_text: 'There can be only one...project name must be unique'
+        helper_text_mode: 'on_error'
+        
+
 MDGridLayout:
     cols: 1
     md_bg_color: app.theme_cls.primary_dark
