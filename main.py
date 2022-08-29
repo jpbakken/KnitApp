@@ -37,14 +37,14 @@ import kv
 # from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.boxlayout import MDBoxLayout
 
-class EditProjectPopup(MDBoxLayout):
+class EditFieldDialog(MDBoxLayout):
     pass
 
 
 class MainApp(MDApp):
     use_kivy_settings = False
     color_picker = None
-    edit_project_dialog = None
+    edit_field_dialog = None
 
 
 # =============================================================================
@@ -120,13 +120,7 @@ class MainApp(MDApp):
     def write_substeps(self,piece_name):
         '''
         '''
-        self.wk_substeps_dir = '{0}/{1}/Substeps'.format(self.data_dir,
-                                                         self.wk_project_name)
-        
-        self.wk_substeps_file = '{}.json'.format(piece_name)
-        self.wk_substeps_path = os.path.join(self.wk_substeps_dir,
-                                             self.wk_substeps_file)
-
+                
         # create the path if it doesn't exist
         if not os.path.exists(self.wk_substeps_dir):
             os.makedirs(self.wk_substeps_dir)
@@ -135,6 +129,16 @@ class MainApp(MDApp):
             json.dump(self.wk_substeps, f)
             
         self.read_projects()
+        
+        
+    def set_substeps_filepath(self):
+        '''
+        '''
+        self.wk_substeps_dir = '{0}/{1}/Substeps'.format(self.data_dir,
+                                                         self.wk_project_name)
+
+        return os.path.join(self.wk_substeps_dir,self.wk_substeps_file)
+
 
     def read_projects(self):
         try:
@@ -145,29 +149,48 @@ class MainApp(MDApp):
             with open('data/projects.json', 'r') as json_file:     
                   self.projects = json.load(json_file)
              
-    def wk_project_vars(self,project_name):
+    def set_project_vars(self,project_name):
         '''
         set working project variables
         '''        
-        self.toolbar_title = project_name        
-        self.screen_name = self.ProjectScreenName
-
+        self.toolbar_title = project_name       
+        
+        # set menu labels fpr on_release of a list item
+        self.list_menu_labels = self.list_menu_labels_project
+        
         self.wk_project = self.projects[project_name]
         self.wk_project_name = project_name
 
         self.wk_pieces = self.wk_project['Pieces'].keys()
+        self.wk_project_data_dir = '{0}/{1}'.format(self.data_dir,
+                                                    self.wk_project_name)
+        
+        self.edit_field_name = 'Project Name'
+        self.edit_field_text = self.wk_project_name
+        self.edit_field_check_list = self.projects.keys()
 
         
-    def wk_piece_vars(self,piece_name,selected_piece_idx = 0):
+    def set_piece_vars(self,piece_name,selected_piece_idx = 0):
         '''
+        set working piece variables
         '''
         self.toolbar_title = self.wk_project_name + ': ' + piece_name
-        self.screen_name = self.PieceScreenName
-
+        
+        # set menu labels fpr on_release of a list item
+        self.list_menu_labels = self.list_menu_labels_piece
+        
         self.wk_piece_name = piece_name
         self.wk_piece = self.wk_project['Pieces'][piece_name]
         
         self.wk_step = self.wk_piece[selected_piece_idx]
+        
+        self.edit_field_name = 'Piece Name'
+        self.edit_field_text = piece_name
+        self.edit_field_check_list = self.wk_pieces
+
+        self.wk_substeps_file = '{}.json'.format(piece_name)
+        self.wk_substeps_path = self.set_substeps_filepath()
+
 
 
 # =============================================================================
@@ -210,36 +233,42 @@ class MainApp(MDApp):
                                   ]
 
         self.project_menu_add_piece = 'Add New Piece'
-        self.project_menu_edit_name = 'Edit Project Name'
         self.project_menu_back_to_root = 'Back to Projects'
         
         
         self.project_menu_labels = [self.project_menu_add_piece,
-                                    self.project_menu_edit_name,
-                                    self.project_menu_back_to_root,
-                                    # self.menu_item_settings,
-                                    ]
+                                    self.project_menu_back_to_root,]
+        
+        self.project_menu_edit_name = 'Edit Project Name'
+        self.project_menu_edit_pieces = 'Edit Pieces'
+
+        self.list_menu_labels_project = [self.project_menu_edit_name,
+                                         self.project_menu_edit_pieces,]
+
+
+        self.piece_menu_knit = 'Knit Piece'
+        self.piece_menu_edit_name = 'Edit Piece Name'
+        self.piece_menu_edit_steps = 'Edit Steps'
+        
+        self.list_menu_labels_piece = [self.piece_menu_knit,
+                                       self.piece_menu_edit_steps,
+                                       self.piece_menu_edit_name,]
+
 
         self.piece_menu_add_step = 'Add New Step'
-        self.piece_menu_edit_name = 'Edit Piece Name'
         self.piece_menu_back_to_project = 'Back to Project Pieces'
-        
+
         self.piece_menu_labels = [self.piece_menu_add_step,
-                                  self.piece_menu_edit_name,
-                                  self.piece_menu_back_to_project,
-                                  # self.menu_item_settings,
-                                  ]
+                                  self.piece_menu_back_to_project,]
         
         
         self.toolbar_title = 'Projects'
         
-        self.ListScreenName = 'list'
-        self.TableScreenName = 'table'
         self.StepEditScreenName = 'stepedit'
         
         self.RootScreenName = 'root'
         self.ProjectScreenName = 'project'
-        self.PieceScreenName = 'pice'
+        self.PieceScreenName = 'piece'
 
 # =============================================================================
 # gui build - general
@@ -294,32 +323,32 @@ class MainApp(MDApp):
         self.root.ids.toolbar.title = self.toolbar_title
 
 
-    def menu_open(self, button):
+    def menu_open(self, instance):
         '''
         '''
-        self.menu.caller = button
+        self.menu.caller = instance
         self.menu.open()
 
 
-    def menu_callback(self, text_item):
+    def menu_callback(self, menu_item):
         '''
         '''
         self.menu.dismiss()
         
-        if text_item == 'Settings':
+        if menu_item == 'Settings':
             self.open_settings()
-                    
+            
         elif self.screen_name == self.RootScreenName:
-            self.root_menu_callback(text_item)
+            self.root_menu_callback(menu_item)
 
         elif self.screen_name == self.ProjectScreenName:
-            self.project_menu_callback(text_item)
+            self.project_menu_callback(menu_item)
 
         elif self.screen_name == self.PieceScreenName:
-            self.piece_menu_callback(text_item)
+            self.piece_menu_callback(menu_item)
 
         else:
-            Snackbar(text=text_item).open()
+            Snackbar(text=menu_item).open()
 
 
     def root_menu_callback(self, text_item):
@@ -339,13 +368,6 @@ class MainApp(MDApp):
         if text_item == self.project_menu_add_piece:
             Snackbar(text=text_item).open()
         
-        elif text_item == self.project_menu_edit_name:
-            self.project_name_edit_dialog()
-            #TODO: changing name requires changing other things/files?
-            # project name unique test, similar to step_code_unique_check
-            
-            Snackbar(text=text_item).open()
-
         elif text_item == self.project_menu_back_to_root:
             self.root_build()
 
@@ -362,7 +384,8 @@ class MainApp(MDApp):
              
         elif text_item == self.piece_menu_edit_name:
             #TODO: changing name requires changing other things?
-            # piece name unique check, similar to step_code_unique_check 
+            
+            #TODO: piece name unique check, similar to step_code_unique_check 
 
             Snackbar(text=text_item).open()
              
@@ -388,7 +411,7 @@ class MainApp(MDApp):
         Input:
             a list of text items
         Action:
-            self.item_list_on_release('item text')
+            self.item_list_menu_build
         '''
         
         # show an empty content area
@@ -402,7 +425,8 @@ class MainApp(MDApp):
             mdlist.add_widget(
                 OneLineListItem(
                     text="{}".format(i),
-                    on_release=lambda x=i: self.item_on_release(x.text),))
+                    on_release=self.item_list_menu_build,
+                    ))
                         
         # add list to the scroll view
         scroll = ScrollView()
@@ -412,22 +436,71 @@ class MainApp(MDApp):
         widget.add_widget(scroll)
 
 
-    def item_on_release(self, text_item):
-        '''
-        what to do when an item in the list object is released
+    # def item_on_release(self, text_item):
+    #     '''
+    #     what to do when an item in the list object is released
         
-        self.screen_name is set in the _build functions for screens
+    #     self.screen_name is set in the _build functions for screens
+    #     '''
+        
+    #     if self.screen_name == self.RootScreenName:
+    #         self.project_build(text_item)
+            
+    #     elif self.screen_name == self.ProjectScreenName:
+    #         self.piece_steps_edit_build(text_item)
+        
+    #     else:
+    #         Snackbar(text=text_item).open()
+
+    def item_list_menu_callback(self, menu_item):
         '''
+        '''
+        self.list_menu.dismiss()
         
         if self.screen_name == self.RootScreenName:
-            self.project_build(text_item)
+
+            if menu_item == self.project_menu_edit_name:
+                self.edit_field_dialog_build()
+                
+            elif menu_item == self.project_menu_edit_pieces:
+                self.project_build(self.wk_project_name)
+
+        elif self.screen_name == self.ProjectScreenName:
+            if menu_item == self.piece_menu_knit:
+                Snackbar(text=menu_item).open()
+                
+            elif menu_item == self.piece_menu_edit_name:
+                self.edit_field_dialog_build()
+                
+            elif menu_item == self.piece_menu_edit_steps:
+                self.piece_steps_edit_build(self.wk_piece_name)
+            
+        else:
+            
+            Snackbar(text=menu_item).open()
+         
+    def item_list_menu_build(self, instance):
+        '''
+        '''
+        if self.screen_name == self.RootScreenName:
+            self.set_project_vars(instance.text)
             
         elif self.screen_name == self.ProjectScreenName:
-            self.piece_steps_edit_build(text_item)
-        
-        else:
-            Snackbar(text=text_item).open()
+            self.set_piece_vars(instance.text)
+            
+        menu_items = [
+            {"viewclass": "OneLineListItem",
+             "text": i,
+             "height": dp(56),
+             "on_release": lambda x=i:  self.item_list_menu_callback(x),
+             } for i in self.list_menu_labels]
 
+        self.list_menu = MDDropdownMenu(caller=instance,
+                                        items=menu_items,
+                                        width_mult=4)
+        
+        self.list_menu.open()
+        
 
 # =============================================================================
 # gui build - root screen
@@ -474,12 +547,14 @@ class MainApp(MDApp):
         self.clear_layout()
 
         # set variables for the selected working project
-        self.wk_project_vars(project_name)
+        self.set_project_vars(project_name)
+        self.screen_name = self.ProjectScreenName
+
 
         # update the toolbar title and menu items
         self.menu_build(self.project_menu_labels)            
 
-        self.root.ids.header.text = 'Select a step to edit'
+        # self.root.ids.header.text = 'Select a step to edit'
         
         # build the list of pieces
         self.item_list_build(self.wk_pieces,
@@ -489,63 +564,93 @@ class MainApp(MDApp):
         self.project_pieces_buttons_build()
         
 
-    def project_name_edit_dialog(self):
-        if not self.edit_project_dialog:
-            self.edit_project_dialog = MDDialog(
-                title="Enter new project name:",
-                type="custom",
-                pos_hint = {'center_x': .5, 'top': .9},
-                content_cls=EditProjectPopup(),
-                buttons=[
-                    MDFlatButton(
-                        text="Cancel",
-                        theme_text_color="Custom",
-                        text_color=self.theme_cls.primary_color,
-                        on_release=self.project_name_edit_dismiss),
-                    MDFlatButton(
-                        text="Save",
-                        theme_text_color="Custom",
-                        text_color=self.theme_cls.primary_color,
-                        # on_release= ,
-                        )
-                    ]
-                )
-            
-        self.edit_project_dialog.open()
+    def edit_field_dialog_build(self):
+        '''
+        popup dialog used to edit a field (e.g., project name)
+        '''
+        # if not self.edit_field_dialog:
+        self.edit_field_dialog = MDDialog(
+            title="Edit {}:".format(self.edit_field_name),
+            type="custom",
+            pos_hint = {'center_x': .5, 'top': .9},
+            content_cls=EditFieldDialog(),
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.edit_field_dismiss),
+                MDFlatButton(
+                    text="Save",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.edit_field_name_save,
+                    )
+                ]
+            )
         
-    def project_name_edit_dismiss(self, inst):
-        self.edit_project_dialog.dismiss()
+        self.edit_field_dialog.open()
+        
+        
+    def edit_field_dismiss(self, inst):
+        '''
+        dismiss the dialog box
+        '''
+        self.edit_field_dialog.dismiss()
+
+
+    def edit_field_name_save(self, inst):
+        '''
+        check to make sure name is unique then save if it is
+        '''
+        # set variables for shortcuts
+        edit_field = self.edit_field_dialog.content_cls.ids.edit_field
+        new_name = edit_field.text
+
+        # check to make sure new name is not already used in projects
+        if next((key for key in self.edit_field_check_list \
+                 if key == new_name), None):
+            edit_field.error = True
+            
+        else:
+            # if editing the project name
+            if self.edit_field_name == 'Project Name':
+            
+                self.projects[new_name] = self.projects.pop(self.wk_project_name)
+                
+                if os.path.exists(self.wk_project_data_dir):
+                    os.rename(self.wk_project_data_dir,'{0}/{1}'.format(
+                        self.data_dir,new_name)) 
+                
+                self.project_build(new_name)
+
+            # if editing the piece name, update the piece in projects
+            elif self.edit_field_name == 'Piece Name':
+                # Snackbar(text=new_name).open()
+                self.wk_project['Pieces'][new_name] = \
+                    self.wk_project['Pieces'].pop(self.wk_piece_name)
+                
+                if os.path.exists(self.wk_substeps_path):
+                    self.wk_substeps_file = '{}.json'.format(new_name)
+                    os.rename(self.wk_substeps_path,
+                              self.set_substeps_filepath())
+                    
+                self.piece_steps_edit_build(new_name)
+                
+                    
+                    
+            
+            self.write_projects()
+            self.edit_field_dialog.dismiss()
+
 
     def project_pieces_buttons_build(self):
         '''
+        build something in content_col on the pieces page
         '''
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content_col)
-
-        # create list and add the items
-        mdlist = MDList()
-        column_header = 'Knit a step'
-        mdlist.add_widget(
-            OneLineListItem(
-                text=column_header,
-                disabled=True,
-                ))
-
-        for piece in self.wk_pieces:
-                        
-            button = MDRaisedButton(
-                        text=piece,
-                        size_hint = (1,.8),
-                        on_release = lambda x=piece: self.knit_piece(x.text),
-                        )
-                    
-            mdlist.add_widget(button)
-                    
-        # add list to the scroll view
-        scroll = ScrollView()
-        scroll.add_widget(mdlist)
         
-        self.root.ids.content_col.add_widget(scroll)
 
     def calc_substeps(self,piece_name):
         '''
@@ -573,17 +678,6 @@ class MainApp(MDApp):
                 StepRow =  StepRow + HowOften
 
         self.write_substeps(piece_name)
-
- # def wk_substeps_vars(self,piece_name):
-     
-     # self.wk_substeps = []
-     # self.wk_project['Substeps'][piece_name] = []
-     # try:
-     #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
-         
-     # except KeyError:
-     #     self.wk_project['Substeps'][piece_name] = []
-     #     self.wk_substeps = self.wk_project['Substeps'][piece_name]
 
 
     def get_current_substeps(self,step_row):
@@ -619,7 +713,8 @@ class MainApp(MDApp):
         '''
         
         # set variables for the selected working piece
-        self.wk_piece_vars(piece_name)
+        self.set_piece_vars(piece_name)
+        self.screen_name = self.PieceScreenName
         
         # update the toolbar title and menu items
         self.menu_build(self.piece_menu_labels) 
@@ -774,8 +869,8 @@ class MainApp(MDApp):
             
             self.write_projects()  
             
-            self.wk_project_vars(self.wk_project_name)
-            self.wk_piece_vars(self.wk_piece_name, self.wk_step_idx)
+            self.set_project_vars(self.wk_project_name)
+            self.set_piece_vars(self.wk_piece_name, self.wk_step_idx)
             
             # update the buttons
             self.steps_code_buttons_build()

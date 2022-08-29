@@ -10,16 +10,16 @@ Created on Sun Aug 21 14:37:03 2022
 main_screen = '''
 #:kivy 1.8.0
 
-<EditProjectPopup>
+<EditFieldDialog>
     orientation: "vertical"
     spacing: "12dp"
     size_hint_y: None
     # height: "120dp"
 
     MDTextField:
-        id: project_name
-        hint_text: "Project Name"
-        text: app.wk_project_name
+        id: edit_field
+        hint_text: app.edit_field_name
+        text: app.edit_field_text
         helper_text: 'There can be only one...project name must be unique'
         helper_text_mode: 'on_error'
         
