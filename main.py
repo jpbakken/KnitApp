@@ -298,7 +298,7 @@ class MainApp(MDApp):
         
 
 # =============================================================================
-# gui build - menu
+# gui build - toolbar menu
 # =============================================================================
     def menu_build(self, menu_labels):
         '''
@@ -347,18 +347,13 @@ class MainApp(MDApp):
         elif self.screen_name == self.PieceScreenName:
             self.piece_menu_callback(menu_item)
 
-        else:
-            Snackbar(text=menu_item).open()
-
 
     def root_menu_callback(self, text_item):
         '''
         '''
         if text_item == self.root_menu_create_project:
             Snackbar(text=text_item).open()
-            
-        else:
-            Snackbar(text=text_item).open()
+            # TODO: add what to do here
         
 
     def project_menu_callback(self, text_item):
@@ -367,12 +362,10 @@ class MainApp(MDApp):
         
         if text_item == self.project_menu_add_piece:
             Snackbar(text=text_item).open()
+            # TODO: add what to do here
         
         elif text_item == self.project_menu_back_to_root:
             self.root_build()
-
-        else:
-            Snackbar(text=text_item).open()
     
 
     def piece_menu_callback(self, text_item):
@@ -381,23 +374,14 @@ class MainApp(MDApp):
 
         if text_item == self.piece_menu_add_step:
             Snackbar(text=text_item).open()
-             
-        elif text_item == self.piece_menu_edit_name:
-            #TODO: changing name requires changing other things?
-            
-            #TODO: piece name unique check, similar to step_code_unique_check 
-
-            Snackbar(text=text_item).open()
-             
+            # TODO: add what to do here
+                          
         elif text_item == self.piece_menu_back_to_project:
             
             self.step_save()
             
             if self.validation_error == False:
                 self.project_build(self.wk_project_name)
-            
-        else:
-            Snackbar(text=text_item).open()
 
 
 # =============================================================================
@@ -436,22 +420,6 @@ class MainApp(MDApp):
         widget.add_widget(scroll)
 
 
-    # def item_on_release(self, text_item):
-    #     '''
-    #     what to do when an item in the list object is released
-        
-    #     self.screen_name is set in the _build functions for screens
-    #     '''
-        
-    #     if self.screen_name == self.RootScreenName:
-    #         self.project_build(text_item)
-            
-    #     elif self.screen_name == self.ProjectScreenName:
-    #         self.piece_steps_edit_build(text_item)
-        
-    #     else:
-    #         Snackbar(text=text_item).open()
-
     def item_list_menu_callback(self, menu_item):
         '''
         '''
@@ -466,7 +434,9 @@ class MainApp(MDApp):
                 self.project_build(self.wk_project_name)
 
         elif self.screen_name == self.ProjectScreenName:
+            
             if menu_item == self.piece_menu_knit:
+                # TODO: add what to do here
                 Snackbar(text=menu_item).open()
                 
             elif menu_item == self.piece_menu_edit_name:
@@ -476,7 +446,7 @@ class MainApp(MDApp):
                 self.piece_steps_edit_build(self.wk_piece_name)
             
         else:
-            
+            # TODO: add what to do here
             Snackbar(text=menu_item).open()
          
     def item_list_menu_build(self, instance):
@@ -626,19 +596,18 @@ class MainApp(MDApp):
 
             # if editing the piece name, update the piece in projects
             elif self.edit_field_name == 'Piece Name':
-                # Snackbar(text=new_name).open()
+
                 self.wk_project['Pieces'][new_name] = \
                     self.wk_project['Pieces'].pop(self.wk_piece_name)
                 
                 if os.path.exists(self.wk_substeps_path):
+                    
                     self.wk_substeps_file = '{}.json'.format(new_name)
+                    
                     os.rename(self.wk_substeps_path,
                               self.set_substeps_filepath())
                     
                 self.piece_steps_edit_build(new_name)
-                
-                    
-                    
             
             self.write_projects()
             self.edit_field_dialog.dismiss()
