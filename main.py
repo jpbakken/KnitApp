@@ -32,7 +32,7 @@ from kivymd.uix.button import MDFlatButton
 from kivymd.uix.dialog import MDDialog
 from itertools import compress
 import kv
-
+# from kivymd.uix.datatables import MDDataTable
 # from kivy.uix.label import Label
 # from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.boxlayout import MDBoxLayout
@@ -148,7 +148,10 @@ class MainApp(MDApp):
         except:
             with open('data/projects.json', 'r') as json_file:     
                   self.projects = json.load(json_file)
-             
+
+# =============================================================================
+# variables that get set when objects are selected (projects, pieces, etc)        
+# =============================================================================
     def set_project_vars(self,project_name):
         '''
         set working project variables
@@ -247,10 +250,12 @@ class MainApp(MDApp):
 
 
         self.piece_menu_knit = 'Knit Piece'
-        self.piece_menu_edit_name = 'Edit Piece Name'
+        self.piece_menu_show_steps = 'Show Steps Table'
         self.piece_menu_edit_steps = 'Edit Steps'
+        self.piece_menu_edit_name = 'Edit Piece Name'
         
         self.list_menu_labels_piece = [self.piece_menu_knit,
+                                       # self.piece_menu_show_steps,
                                        self.piece_menu_edit_steps,
                                        self.piece_menu_edit_name,]
 
@@ -269,6 +274,7 @@ class MainApp(MDApp):
         self.RootScreenName = 'root'
         self.ProjectScreenName = 'project'
         self.PieceScreenName = 'piece'
+        self.PieceKnitScreenName = 'knit'
 
 # =============================================================================
 # gui build - general
@@ -437,13 +443,15 @@ class MainApp(MDApp):
             
             if menu_item == self.piece_menu_knit:
                 # TODO: add what to do here
-                Snackbar(text=menu_item).open()
-                
+                self.knit_piece(self.wk_piece_name)            
             elif menu_item == self.piece_menu_edit_name:
                 self.edit_field_dialog_build()
                 
             elif menu_item == self.piece_menu_edit_steps:
                 self.piece_steps_edit_build(self.wk_piece_name)
+                
+            elif menu_item == self.piece_menu_show_steps:
+                self.piece_steps_table_build(self.wk_piece_name)    
             
         else:
             # TODO: add what to do here
@@ -470,7 +478,97 @@ class MainApp(MDApp):
                                         width_mult=4)
         
         self.list_menu.open()
+
+# =============================================================================
+# edit field dialog box build
+# =============================================================================
+    def edit_field_dialog_build(self):
+        '''
+        popup dialog used to edit a field (e.g., project name)
+        '''
+        # if not self.edit_field_dialog:
+        self.edit_field_dialog = MDDialog(
+            title="Edit {}:".format(self.edit_field_name),
+            type="custom",
+            pos_hint = {'center_x': .5, 'top': .9},
+            content_cls=EditFieldDialog(),
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.edit_field_dismiss),
+                MDFlatButton(
+                    text="Save",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.edit_field_name_save,
+                    )
+                ]
+            )
         
+        self.edit_field_dialog.open()
+        
+        
+    def edit_field_dismiss(self, inst):
+        '''
+        dismiss the dialog box
+        '''
+        self.edit_field_dialog.dismiss()
+
+
+    def edit_field_name_save(self, inst):
+        '''
+        check to make sure name is unique then save if it is
+        '''
+        # set variables for shortcuts
+        edit_field = self.edit_field_dialog.content_cls.ids.edit_field
+        new_name = edit_field.text
+
+        # check to make sure new name is not already used in projects
+        if next((key for key in self.edit_field_check_list \
+                 if key == new_name), None):
+            edit_field.error = True
+            
+        else:
+            # if editing the project name
+            if self.edit_field_name == 'Project Name':
+                self.edit_project_name_save(new_name)
+
+            # if editing the piece name, update the piece in projects
+            elif self.edit_field_name == 'Piece Name':
+                self.edit_piece_name_save(new_name)
+            
+            self.write_projects()
+            self.edit_field_dialog.dismiss()
+
+
+    def edit_project_name_save(self, new_name):
+        '''
+        '''
+        self.projects[new_name] = self.projects.pop(self.wk_project_name)
+        
+        if os.path.exists(self.wk_project_data_dir):
+            os.rename(self.wk_project_data_dir,'{0}/{1}'.format(
+                self.data_dir,new_name)) 
+        
+        self.project_build(new_name)
+        
+        
+    def edit_piece_name_save(self, new_name):
+        '''
+        '''
+        self.wk_project['Pieces'][new_name] = \
+            self.wk_project['Pieces'].pop(self.wk_piece_name)
+        
+        if os.path.exists(self.wk_substeps_path):
+            
+            self.wk_substeps_file = '{}.json'.format(new_name)
+            
+            os.rename(self.wk_substeps_path,
+                      self.set_substeps_filepath())
+            
+        self.piece_steps_edit_build(new_name)
 
 # =============================================================================
 # gui build - root screen
@@ -534,85 +632,6 @@ class MainApp(MDApp):
         self.project_pieces_buttons_build()
         
 
-    def edit_field_dialog_build(self):
-        '''
-        popup dialog used to edit a field (e.g., project name)
-        '''
-        # if not self.edit_field_dialog:
-        self.edit_field_dialog = MDDialog(
-            title="Edit {}:".format(self.edit_field_name),
-            type="custom",
-            pos_hint = {'center_x': .5, 'top': .9},
-            content_cls=EditFieldDialog(),
-            buttons=[
-                MDFlatButton(
-                    text="Cancel",
-                    theme_text_color="Custom",
-                    text_color=self.theme_cls.primary_color,
-                    on_release=self.edit_field_dismiss),
-                MDFlatButton(
-                    text="Save",
-                    theme_text_color="Custom",
-                    text_color=self.theme_cls.primary_color,
-                    on_release=self.edit_field_name_save,
-                    )
-                ]
-            )
-        
-        self.edit_field_dialog.open()
-        
-        
-    def edit_field_dismiss(self, inst):
-        '''
-        dismiss the dialog box
-        '''
-        self.edit_field_dialog.dismiss()
-
-
-    def edit_field_name_save(self, inst):
-        '''
-        check to make sure name is unique then save if it is
-        '''
-        # set variables for shortcuts
-        edit_field = self.edit_field_dialog.content_cls.ids.edit_field
-        new_name = edit_field.text
-
-        # check to make sure new name is not already used in projects
-        if next((key for key in self.edit_field_check_list \
-                 if key == new_name), None):
-            edit_field.error = True
-            
-        else:
-            # if editing the project name
-            if self.edit_field_name == 'Project Name':
-            
-                self.projects[new_name] = self.projects.pop(self.wk_project_name)
-                
-                if os.path.exists(self.wk_project_data_dir):
-                    os.rename(self.wk_project_data_dir,'{0}/{1}'.format(
-                        self.data_dir,new_name)) 
-                
-                self.project_build(new_name)
-
-            # if editing the piece name, update the piece in projects
-            elif self.edit_field_name == 'Piece Name':
-
-                self.wk_project['Pieces'][new_name] = \
-                    self.wk_project['Pieces'].pop(self.wk_piece_name)
-                
-                if os.path.exists(self.wk_substeps_path):
-                    
-                    self.wk_substeps_file = '{}.json'.format(new_name)
-                    
-                    os.rename(self.wk_substeps_path,
-                              self.set_substeps_filepath())
-                    
-                self.piece_steps_edit_build(new_name)
-            
-            self.write_projects()
-            self.edit_field_dialog.dismiss()
-
-
     def project_pieces_buttons_build(self):
         '''
         build something in content_col on the pieces page
@@ -621,6 +640,9 @@ class MainApp(MDApp):
         self.widget_visible(self.root.ids.content_col)
         
 
+# =============================================================================
+# substep fuctions used while knitting
+# =============================================================================
     def calc_substeps(self,piece_name):
         '''
         '''
@@ -662,25 +684,91 @@ class MainApp(MDApp):
     def knit_piece(self, piece_name):
         '''
         '''
+        # show and clear anything left in the main layout
+        self.clear_layout()
+
+
         #TODO: if work in progress then calc substeps
         self.calc_substeps(piece_name)
         #TODO: else read substeps and set working row
         
+        self.get_current_substeps(45)
+        
+        # build the list of pieces
+        mdlist = MDList()        
+
+        # iterate through items and build the scroll list
+        for i in self.step_row_substeps:
+            mdlist.add_widget(
+                OneLineListItem(
+                    text="{}".format(i['Action']),
+                    # text_color=i['FontColor'],
+                    bg_color=i['FontColor'],
+                    theme_text_color='Custom',
+                    
+                    ))
+                        
+        # add list to the scroll view
+        #TODO: get the croll into the cetnter of the screen?
+        scroll = ScrollView(pos_hint={'center_x': .5, 'center_y': .5})
+        scroll.add_widget(mdlist)
+
+        # add widget to the content area
+        self.root.ids.content_main.add_widget(scroll) 
+
         #TODO: open work substeps screen
         #button to move forward row
         #button to move back row
         #button to jump to step
+    # def item_list_build(self, items, widget):
+    #            '''
+    #            build a clickable scroll list of test items
+               
+    #            Input:
+    #                a list of text items
+    #            Action:
+    #                self.item_list_menu_build
+    #            '''
+               
+    #            # show an empty content area
+    #            self.widget_visible(self.root.ids.content_main)
+               
+    #            # create list and add the items
+    #            mdlist = MDList()        
 
-        
+    #            # iterate through items and build the scroll list
+    #            for i in items:
+    #                mdlist.add_widget(
+    #                    OneLineListItem(
+    #                        text="{}".format(i),
+    #                        on_release=self.item_list_menu_build,
+    #                        ))
+                               
+    #            # add list to the scroll view
+    #            scroll = ScrollView()
+    #            scroll.add_widget(mdlist)
+
+    #            # add widget to the content area
+    #            widget.add_widget(scroll) 
         
 
 # =============================================================================
 # gui build - piece page (listing steps)    
-# =============================================================================
+# ============================================================================
+        
     def piece_steps_edit_build(self, piece_name):
         '''
         '''
+        self.piece_steps_prep(piece_name)
+
+        # build the code buttons and edit screen
+        self.steps_code_buttons_build()
+        self.step_edit_fields_build()
         
+        
+    def piece_steps_prep(self,piece_name):
+        '''
+        '''
         # set variables for the selected working piece
         self.set_piece_vars(piece_name)
         self.screen_name = self.PieceScreenName
@@ -690,11 +778,7 @@ class MainApp(MDApp):
         
         # show and clear anything left in the widget
         self.clear_layout()
-                
-        # build the code buttons and edit screen
-        self.steps_code_buttons_build()
-        self.step_edit_fields_build()
-        
+
 
     def steps_code_buttons_build(self):
                 
