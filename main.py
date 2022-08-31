@@ -20,7 +20,7 @@ from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.metrics import dp
 from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.list import OneLineListItem
+from kivymd.uix.list import OneLineListItem, TwoLineListItem
 from kivymd.uix.pickers import MDColorPicker
 from kivy.uix.settings import SettingsWithTabbedPanel
 
@@ -266,6 +266,15 @@ class MainApp(MDApp):
         self.piece_menu_labels = [self.piece_menu_add_step,
                                   self.piece_menu_back_to_project,]
         
+        
+        self.piece_knit_button_previous = 'Previous Step'
+        self.piece_knit_button_jump = 'Jump to Step'
+        self.piece_knit_button_next = 'Next Step'
+        
+        self.piece_knit_button_labels = [self.piece_knit_button_previous,
+                                         self.piece_knit_button_jump,
+                                         self.piece_knit_button_next]
+
         
         self.toolbar_title = 'Projects'
         
@@ -668,23 +677,29 @@ class MainApp(MDApp):
             Code = step['Code']
             Action = step['Action']
             FontColor = step['FontColor']
-            
+            CodeStepNum = 1
             for substep in range(HowManyTimes):
-                self.wk_substeps.append({'Step Row': StepRow,
+                self.wk_substeps.append({'StepRow': StepRow,
                                  'Code': Code,
                                  'Action': Action,
-                                 'FontColor': FontColor})
+                                 'FontColor': FontColor,
+                                 'CodeStepNum': CodeStepNum,
+                                 'HowManyTimes': HowManyTimes
+                                 })
                 
                 # increment to next row to add
                 StepRow =  StepRow + HowOften
+                CodeStepNum += 1
 
         self.write_substeps(piece_name)
 
 
     def get_current_substeps(self,step_row):
         
+        self.knit_step_row = step_row
+        
         current_substeps = [
-            sub['Step Row'] == step_row for sub in self.wk_substeps]
+            sub['StepRow'] == step_row for sub in self.wk_substeps]
         
         self.step_row_substeps = list(compress(self.wk_substeps,
                                      current_substeps))
@@ -710,19 +725,32 @@ class MainApp(MDApp):
         #button to move back row
         #button to jump to step      
         
-    def knit_piece_content_build(self,substep=45):
+    def knit_piece_content_build(self,step_row=45):
         
-        self.get_current_substeps(substep)
+        self.widget_visible(self.root.ids.content_main)
+
+        self.get_current_substeps(step_row)
         
         # build the list of pieces
         mdlist = MDList()        
 
         # iterate through items and build the scroll list
         for i in self.step_row_substeps:
+            
+            self.root.ids.header.text = '{0} Row Number {1}'.format(
+                self.wk_piece_name,
+                i['StepRow'])
+            
             mdlist.add_widget(
-                OneLineListItem(
+                TwoLineListItem(
                     text="{}".format(i['Action']),
-                    # text_color=i['FontColor'],
+                    secondary_text='{0}: {1} of {2} times'.format(
+                        i['Code'],
+                        i['CodeStepNum'],
+                        i['HowManyTimes']),
+                    secondary_theme_text_color = 'Custom',
+                    secondary_text_color = [0,0,0,1],
+                    secondary_font_style = 'Caption',
                     bg_color=i['FontColor'],
                     theme_text_color='Custom',)
                 )
@@ -740,19 +768,16 @@ class MainApp(MDApp):
         self.widget_visible(self.root.ids.content_col)
 
 
-        button_labels = ['Previous Step',
-                         'Jump to Step',
-                         'Next Step']
         # create list and add the items
         mdlist = MDList()     
         
-        for button in button_labels:
+        for button in self.piece_knit_button_labels:
             mdlist.add_widget(OneLineListItem(size_hint = (1, .25)))
             
             button = MDRaisedButton(
                         text=button,
                         size_hint = (1,.8),
-                        on_release = self.knit_next,
+                        on_release = self.knit_piece_button_release,
                         )
                     
             mdlist.add_widget(button)
@@ -764,8 +789,19 @@ class MainApp(MDApp):
         self.root.ids.content_col.add_widget(scroll)
 
 
-    def knit_next(self, instance):
-        Snackbar(text=instance.text).open()
+    def knit_piece_button_release(self, instance):
+        '''
+        '''
+        if instance.text == self.piece_knit_button_previous:
+            self.knit_piece_content_build(self.knit_step_row-1)
+            # Snackbar(text=str(self.knit_step_row-1)).open()
+            
+        elif instance.text == self.piece_knit_button_jump:
+            Snackbar(text=instance.text).open()
+            
+        elif instance.text == self.piece_knit_button_next:
+            self.knit_piece_content_build(self.knit_step_row+1)
+
 # =============================================================================
 # gui build - piece page (listing steps)    
 # ============================================================================
