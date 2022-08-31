@@ -702,7 +702,17 @@ class MainApp(MDApp):
         self.calc_substeps(piece_name)
         #TODO: else read substeps and set working row
         
-        self.get_current_substeps(44)
+        self.knit_piece_content_build()
+        self.knit_piece_button_build()
+
+        #TODO: open work substeps screen
+        #button to move forward row
+        #button to move back row
+        #button to jump to step      
+        
+    def knit_piece_content_build(self,substep=45):
+        
+        self.get_current_substeps(substep)
         
         # build the list of pieces
         mdlist = MDList()        
@@ -724,14 +734,7 @@ class MainApp(MDApp):
 
         # add widget to the content area
         self.root.ids.content_main.add_widget(scroll) 
-        
-        self.knit_piece_button_build()
 
-        #TODO: open work substeps screen
-        #button to move forward row
-        #button to move back row
-        #button to jump to step      
-        
     def knit_piece_button_build(self):
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content_col)
@@ -744,25 +747,7 @@ class MainApp(MDApp):
         mdlist = MDList()     
         
         for button in button_labels:
-            
-            # print(piece['FontColor'])
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            #TODO:
-            mdlist.add_widget(OneLineListItem(size_hint = (1, .2)))
+            mdlist.add_widget(OneLineListItem(size_hint = (1, .25)))
             
             button = MDRaisedButton(
                         text=button,
