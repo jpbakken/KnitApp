@@ -36,7 +36,7 @@ MDGridLayout:
     # buffer area above the content panel
     Label:
         id: header
-        size_hint_y: .05
+        size_hint_y: .1
         pos_hint: {'center_x':0.5, 'top':1}
 
 
@@ -51,7 +51,7 @@ MDGridLayout:
         # main content area
         MDGridLayout:
             id: content
-            size_hint_y: .9
+            size_hint_y: .8
             cols: 1
             
             MDGridLayout:
@@ -77,20 +77,17 @@ MDGridLayout:
 
     # buffer area below the content panel
     MDBoxLayout:
-        size_hint_y: .05
+        size_hint_y: .1
         # md_bg_color: app.theme_cls.primary_dark
 
 
 '''
 
-step_edit_button = '''
+knit_piece_button_labels = '''
 
-MDRaisedButton
-    text: 'Edit Steps'
-    # size_hint: (1,.8)        
-    pos_hint: {'center_x': .5, 'center_y': .5}
-    on_release: app.piece_steps_edit_build()
-
+MDGridLayout:
+    cols: 1  
+        
 '''
 
 step_edit_screen = '''

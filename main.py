@@ -34,7 +34,7 @@ from itertools import compress
 import kv
 # from kivymd.uix.datatables import MDDataTable
 # from kivy.uix.label import Label
-# from kivymd.uix.gridlayout import MDGridLayout
+from kivymd.uix.gridlayout import MDGridLayout
 from kivymd.uix.boxlayout import MDBoxLayout
 
 class EditFieldDialog(MDBoxLayout):
@@ -424,6 +424,16 @@ class MainApp(MDApp):
 
         # add widget to the content area
         widget.add_widget(scroll)
+        # scroll.pos = (0, mdlist.size[1] / widget.size[1}])
+        
+        # print(scroll.pos)
+        # # print(mdlist.pos)
+        # print('~~~~')
+        # # print(mdlist.size_hint)
+        # print(mdlist.size[1])
+        # print('-----------')
+        # # print(widget.size_hint)
+        # print(widget.size)
 
 
     def item_list_menu_callback(self, menu_item):
@@ -692,7 +702,7 @@ class MainApp(MDApp):
         self.calc_substeps(piece_name)
         #TODO: else read substeps and set working row
         
-        self.get_current_substeps(45)
+        self.get_current_substeps(44)
         
         # build the list of pieces
         mdlist = MDList()        
@@ -704,54 +714,73 @@ class MainApp(MDApp):
                     text="{}".format(i['Action']),
                     # text_color=i['FontColor'],
                     bg_color=i['FontColor'],
-                    theme_text_color='Custom',
-                    
-                    ))
+                    theme_text_color='Custom',)
+                )
                         
         # add list to the scroll view
-        #TODO: get the croll into the cetnter of the screen?
-        scroll = ScrollView(pos_hint={'center_x': .5, 'center_y': .5})
+        scroll = ScrollView()
+        #TODO: get the scroll into the cetnter of the screen?
         scroll.add_widget(mdlist)
 
         # add widget to the content area
         self.root.ids.content_main.add_widget(scroll) 
+        
+        self.knit_piece_button_build()
 
         #TODO: open work substeps screen
         #button to move forward row
         #button to move back row
-        #button to jump to step
-    # def item_list_build(self, items, widget):
-    #            '''
-    #            build a clickable scroll list of test items
-               
-    #            Input:
-    #                a list of text items
-    #            Action:
-    #                self.item_list_menu_build
-    #            '''
-               
-    #            # show an empty content area
-    #            self.widget_visible(self.root.ids.content_main)
-               
-    #            # create list and add the items
-    #            mdlist = MDList()        
-
-    #            # iterate through items and build the scroll list
-    #            for i in items:
-    #                mdlist.add_widget(
-    #                    OneLineListItem(
-    #                        text="{}".format(i),
-    #                        on_release=self.item_list_menu_build,
-    #                        ))
-                               
-    #            # add list to the scroll view
-    #            scroll = ScrollView()
-    #            scroll.add_widget(mdlist)
-
-    #            # add widget to the content area
-    #            widget.add_widget(scroll) 
+        #button to jump to step      
         
+    def knit_piece_button_build(self):
+        # show and clear anything left in the widget
+        self.widget_visible(self.root.ids.content_col)
 
+
+        button_labels = ['Previous Step',
+                         'Jump to Step',
+                         'Next Step']
+        # create list and add the items
+        mdlist = MDList()     
+        
+        for button in button_labels:
+            
+            # print(piece['FontColor'])
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            #TODO:
+            mdlist.add_widget(OneLineListItem(size_hint = (1, .2)))
+            
+            button = MDRaisedButton(
+                        text=button,
+                        size_hint = (1,.8),
+                        on_release = self.knit_next,
+                        )
+                    
+            mdlist.add_widget(button)
+                    
+        # add list to the scroll view
+        scroll = ScrollView()
+        scroll.add_widget(mdlist)
+        
+        self.root.ids.content_col.add_widget(scroll)
+
+
+    def knit_next(self, instance):
+        Snackbar(text=instance.text).open()
 # =============================================================================
 # gui build - piece page (listing steps)    
 # ============================================================================
