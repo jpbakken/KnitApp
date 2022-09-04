@@ -15,6 +15,7 @@ Created on Sat Aug 13 15:09:47 2022
 import json
 from typing import Union
 import os
+import shutil
 
 from kivymd.app import MDApp
 from kivy.lang import Builder
@@ -23,6 +24,10 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.list import OneLineListItem, TwoLineListItem
 from kivymd.uix.pickers import MDColorPicker
 from kivy.uix.settings import SettingsWithTabbedPanel
+from kivy.uix.settings import SettingItem
+# from kivy.uix.settings import Settings
+# from kivy.uix.settings import SettingColor
+import kivy.utils as utils
 
 from kivymd.uix.snackbar import Snackbar
 from kivy.uix.scrollview import ScrollView
@@ -40,52 +45,37 @@ from kivymd.uix.boxlayout import MDBoxLayout
 class EditFieldDialog(MDBoxLayout):
     pass
 
+class ColorPickerDialog(MDBoxLayout):
+    pass
 
-class MainApp(MDApp):
+class SettingButtons(SettingItem):
+
+    def __init__(self, **kwargs):
+        self.register_event_type('on_release')
+        # For Python3 compatibility we need to drop the buttons keyword when calling super.
+        kw = kwargs.copy()
+        kw.pop('buttons', None)
+        super(SettingItem, self).__init__(**kw)
+        for aButton in kwargs["buttons"]:
+            oButton=MDRaisedButton(text=aButton['title'], font_size= '15sp')
+            oButton.ID=aButton['id']
+            self.add_widget(oButton)
+            oButton.bind (on_release=self.On_ButtonPressed)
+            
+            
+    def set_value(self, section, key, value):
+        # set_value normally reads the configparser values and runs on an error
+        # to do nothing here
+        return
+    
+    def On_ButtonPressed(self,instance):
+        self.panel.settings.dispatch('on_config_change',self.panel.config, self.section, self.key, instance.ID)
+
+
+class KnitApp(MDApp):
     use_kivy_settings = False
     color_picker = None
     edit_field_dialog = None
-
-
-# =============================================================================
-# settings page
-# =============================================================================
-    def build_config(self, config):
-        """
-        Set the default values for the configs sections.
-        """
-        config.setdefaults('App Settings', {'style': 'Dark', 
-                                            'palette': 'Gray',
-                                            'hue': '500'})
-
-    def build_settings(self, settings):
-        """
-        Add our custom section to the default configuration object.
-        """
-        # We use the string defined above for our JSON, but it could also be
-        # loaded from a file as follows:
-        #     settings.add_json_panel('My Label', self.config, 'settings.json')
-        settings.add_json_panel('App Settings', self.config, data=kv.settings_json)
-
-    def on_config_change(self, config, section, key, value):
-        """
-        Respond to changes in the configuration.
-        """
-
-        if section == 'App Settings':
-            if key == "style":
-                self.theme_cls.theme_style = value
-            elif key == 'palette':
-                self.theme_cls.primary_palette = value
-            elif key == 'hue':
-                self.theme_cls.primary_hue = value
-
-
-    def close_settings(self, settings=None):
-        """
-        The settings panel has been closed.
-        """
-        super(MainApp, self).close_settings(settings)
 
 # =============================================================================
 # data methods
@@ -106,48 +96,89 @@ class MainApp(MDApp):
             }
     '''
     def set_data_dir(self):
+        '''
+        set the data directory to the user data directory for the app
+        
+        copy sample files from app data directory if user directory is empty
+        '''
         app = MDApp.get_running_app()
         self.data_dir = app.user_data_dir
+        self.copy_data_dir()
 
 
-    def write_projects(self):
+    def copy_data_dir(self):
+        '''
+        if self.data_dir is empty, copy the sample data dir
+        '''
+        target_dir = self.data_dir
+        source_dir = 'data'
         
-        with open(self.data_dir + '/projects.json', 'w') as f:
-            json.dump(self.projects, f)
+        #if target directory has no project folders 
+        if not [d for d in next(os.walk(target_dir))[1]]:
+            # get list of files from the source directory
+            files=os.listdir(source_dir)
             
-        self.read_projects()
-
-    def write_substeps(self,piece_name):
-        '''
-        '''
+            # copy files and directories from source to target
+            for file in files:                
+                src = os.path.join(source_dir,file)
+                tgt = os.path.join(target_dir,file)
                 
-        # create the path if it doesn't exist
-        if not os.path.exists(self.wk_substeps_dir):
-            os.makedirs(self.wk_substeps_dir)
+                if os.path.isdir(src):
+                    shutil.copytree(src, tgt)
+                else:
+                    shutil.copy2(src, target_dir)
+
+    
+    def get_project_list(self):
+        '''
+        get and sort project list from the app data directory
+        '''
+        self.project_list = [d for d in next(os.walk(self.data_dir))[1]]
+        self.project_list.sort()
+        
+        
+    def get_wk_pieces_list(self):
+        '''
+        get and sort pieces list from the working project directory
+        '''
+        self.wk_pieces_list = os.listdir(self.wk_pieces_dir)
+        self.wk_pieces_list = [name.split('.')[0] for name in self.wk_pieces_list]
+
+    def get_wk_substeps(self):
+        '''
+        get substeps list from the working project directory
+        '''
+
+
+    def write_wk_piece(self):
+        '''
+        write a json file for the working piece dictionary
+        '''
+        self.wk_piece.sort(key=self.sort_steps)
+
+        with open(self.wk_piece_filename, 'w') as f:
+            json.dump(self.wk_piece, f)
+                    
+        
+    def write_wk_substeps(self,piece_name):
+        '''
+        write a json file for the working substeps dictionary
+        '''
             
-        with open(self.wk_substeps_path, 'w') as f:
+        with open(self.wk_substeps_filename, 'w') as f:
             json.dump(self.wk_substeps, f)
-            
-        self.read_projects()
+                    
         
-        
-    def set_substeps_filepath(self):
+    def read_piece(self,piece_name):
         '''
         '''
-        self.wk_substeps_dir = '{0}/{1}/Substeps'.format(self.data_dir,
-                                                         self.wk_project_name)
-
-        return os.path.join(self.wk_substeps_dir,self.wk_substeps_file)
-
-
-    def read_projects(self):
-        try:
-            with open(self.data_dir + '/projects.json', 'r') as json_file:     
-                  self.projects = json.load(json_file)
-                  # print(self.projects)
-        except:
-            with open('data/projects.json', 'r') as json_file:     
-                  self.projects = json.load(json_file)
+        with open(self.wk_piece_filename, 'r') as json_file:     
+              self.wk_piece = json.load(json_file)
+        
+    
+    def sort_steps(self, e):
+        return e['StartRow']
+              
 
 # =============================================================================
 # variables that get set when objects are selected (projects, pieces, etc)        
@@ -161,88 +192,150 @@ class MainApp(MDApp):
         # set menu labels fpr on_release of a list item
         self.list_menu_labels = self.list_menu_labels_project
         
-        self.wk_project = self.projects[project_name]
+        # self.wk_project = self.projects[project_name]
         self.wk_project_name = project_name
 
-        self.wk_pieces = self.wk_project['Pieces'].keys()
-        self.wk_project_data_dir = '{0}/{1}'.format(self.data_dir,
-                                                    self.wk_project_name)
+        self.wk_project_data_dir = os.path.join(self.data_dir,
+                                                self.wk_project_name)
         
-        self.edit_field_name = 'Project Name'
+        self.wk_pieces_dir = os.path.join(self.wk_project_data_dir,
+                                          'Pieces')
+     
+        self.wk_substeps_dir = os.path.join(self.wk_project_data_dir,
+                                            'Substeps')
+
+        self.get_wk_pieces_list()        
+
+        self.edit_field_name = 'Edit Project Name'
         self.edit_field_text = self.wk_project_name
-        self.edit_field_check_list = self.projects.keys()
+        self.edit_field_check_list = self.project_list
+
 
         
     def set_piece_vars(self,piece_name,selected_piece_idx = 0):
         '''
         set working piece variables
         '''
-        self.toolbar_title = self.wk_project_name + ': ' + piece_name
+        self.wk_piece_name = piece_name
+
+        self.toolbar_title = self.wk_project_name + ': ' + self.wk_piece_name
         
+
         # set menu labels fpr on_release of a list item
         self.list_menu_labels = self.list_menu_labels_piece
         
-        self.wk_piece_name = piece_name
-        self.wk_piece = self.wk_project['Pieces'][piece_name]
+        self.set_piece_filenames()
+
+        # read the piece file
+        self.read_piece(self.wk_piece_name)
         
+        # set variable for the selected step or the first step
         self.wk_step = self.wk_piece[selected_piece_idx]
         
-        self.edit_field_name = 'Piece Name'
+        self.edit_field_name = 'Edit Piece Name'
         self.edit_field_text = piece_name
-        self.edit_field_check_list = self.wk_pieces
+        self.edit_field_check_list = self.wk_pieces_list
 
-        self.wk_substeps_file = '{}.json'.format(piece_name)
-        self.wk_substeps_path = self.set_substeps_filepath()
+    
+    def set_piece_filenames(self):
+        '''
+        set filenames for project pieces and substeps
+        '''
+        
+        # create the path if it doesn't exist
+        if not os.path.exists(self.wk_pieces_dir):
+            os.makedirs(self.wk_pieces_dir)
 
+        # create the path if it doesn't exist
+        if not os.path.exists(self.wk_substeps_dir):
+            os.makedirs(self.wk_substeps_dir)
+
+        self.wk_piece_filename = os.path.join(self.wk_pieces_dir, 
+                                   self.wk_piece_name + '.json')
+        
+        self.wk_substeps_filename = os.path.join(self.wk_substeps_dir, 
+                                   self.wk_piece_name + '.json')
 
 
 # =============================================================================
 # class variables
 # =============================================================================
+    def set_app_vars(self):
+        """
+        Define variables that can be used throughout
+        """
 
-    def set_vars_layout(self):
-        '''
-        define variables that are used in layouts
-        '''
+        self.set_data_dir()
+
+        # define custom settings options
         self.settings_cls = SettingsWithTabbedPanel
 
         self.theme_cls.theme_style = self.config.get(self.app_settings_label,
                                                      'style')
         self.theme_cls.primary_palette = self.config.get(self.app_settings_label,
                                                      'palette')
-        self.theme_cls.primary_hue = self.config.get(self.app_settings_label,
-                                                     'hue')
+        
+        self.color_select1 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select1'))[:-1] + [1]
+        
+        self.color_select2 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select2'))[:-1] + [1]
+        self.color_select3 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select3'))[:-1] + [1]
+        self.color_select4 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select4'))[:-1] + [1]
+        self.color_select5 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select5'))[:-1] + [1]
+        
+        print(self.color_select2)
+
+        # self.color_select1 = [0.8784313725490196, 
+        #                       0.9490196078431372, 
+        #                       0.9450980392156862, 1]# Teal 50
+        # self.color_select2 = [0.9372549019607843, 
+        #                       0.9215686274509803, 
+        #                       0.9137254901960784, 1]# Brown 50
+        # self.color_select3 = '000000'
+        
+        # self.color_select4 = [0.7333333333333333, 
+        #                        0.8705882352941177, 
+        #                        0.984313725490196, 1]# Blue
+
+        # self.color_select5 = [0.9725490196078431, 
+        #                       0.7333333333333333, 
+        #                       0.8156862745098039, 1]# Pink
 
 
+        # get the list of saved projects
+        self.get_project_list()
+
+        # import the layout strings
         self.root= Builder.load_string(kv.main_screen)
         self.step_edit_layout = Builder.load_string(kv.step_edit_screen)
 
-    def set_vars(self):
-        """
-        Define variables that can be used throughout
-        """
-        self.set_data_dir()
-        
-        self.app_settings_label = 'App Settings'
-
+        # set name of the settings menu item
         self.menu_item_settings = 'Settings'
 
+        # set names for the root toolbar menu
         self.root_menu_create_project = 'Create New Project'
-        # self.root_menu_item_2 = 'root_menu_item_2'
-
         self.root_menu_labels = [self.root_menu_create_project,
-                                 # self.root_menu_item_2,
-                                  self.menu_item_settings
-                                  ]
+                                 self.menu_item_settings]
+
 
         self.project_menu_add_piece = 'Add New Piece'
+        self.project_menu_edit_name = 'Edit Project Name'
         self.project_menu_back_to_root = 'Back to Projects'
         
         
         self.project_menu_labels = [self.project_menu_add_piece,
+                                    self.project_menu_edit_name,
                                     self.project_menu_back_to_root,]
         
-        self.project_menu_edit_name = 'Edit Project Name'
         self.project_menu_edit_pieces = 'Edit Pieces'
 
         self.list_menu_labels_project = [self.project_menu_edit_name,
@@ -275,6 +368,14 @@ class MainApp(MDApp):
                                          self.piece_knit_button_jump,
                                          self.piece_knit_button_next]
 
+        
+        self.new_step_dict = {"Code": "Code",
+                              "Action": "",
+                              "HowManyTimes": 1, 
+                              "HowOften": 1, 
+                              "StartRow": 1, 
+                              "FontColor": self.color_select1
+                              }
         
         self.toolbar_title = 'Projects'
         
@@ -367,18 +468,17 @@ class MainApp(MDApp):
         '''
         '''
         if text_item == self.root_menu_create_project:
-            Snackbar(text=text_item).open()
-            # TODO: add what to do here
-        
+            self.create_project()
 
     def project_menu_callback(self, text_item):
         '''
         '''
-        
         if text_item == self.project_menu_add_piece:
-            Snackbar(text=text_item).open()
-            # TODO: add what to do here
-        
+            self.create_piece()
+            
+        elif text_item == self.project_menu_edit_name:
+            self.dialog_field_build()
+
         elif text_item == self.project_menu_back_to_root:
             self.root_build()
     
@@ -388,8 +488,7 @@ class MainApp(MDApp):
         '''
 
         if text_item == self.piece_menu_add_step:
-            Snackbar(text=text_item).open()
-            # TODO: add what to do here
+            self.create_step()
                           
         elif text_item == self.piece_menu_back_to_project:
             
@@ -410,39 +509,24 @@ class MainApp(MDApp):
         Input:
             a list of text items
         Action:
-            self.item_list_menu_build
+            self.item_list_menu_on_release
         '''
         
         # show an empty content area
-        self.widget_visible(self.root.ids.content_main)
-        
-        # create list and add the items
-        mdlist = MDList()        
+        self.widget_visible(widget)
 
+        scroll = Builder.load_string(kv.scroll_list_widget)
+        
         # iterate through items and build the scroll list
         for i in items:
-            mdlist.add_widget(
+            scroll.ids.mdlist.add_widget(
                 OneLineListItem(
                     text="{}".format(i),
-                    on_release=self.item_list_menu_build,
+                    on_release=self.item_list_menu_on_release,
                     ))
                         
-        # add list to the scroll view
-        scroll = ScrollView()
-        scroll.add_widget(mdlist)
-
         # add widget to the content area
         widget.add_widget(scroll)
-        # scroll.pos = (0, mdlist.size[1] / widget.size[1}])
-        
-        # print(scroll.pos)
-        # # print(mdlist.pos)
-        # print('~~~~')
-        # # print(mdlist.size_hint)
-        # print(mdlist.size[1])
-        # print('-----------')
-        # # print(widget.size_hint)
-        # print(widget.size)
 
 
     def item_list_menu_callback(self, menu_item):
@@ -450,21 +534,13 @@ class MainApp(MDApp):
         '''
         self.list_menu.dismiss()
         
-        if self.screen_name == self.RootScreenName:
-
-            if menu_item == self.project_menu_edit_name:
-                self.edit_field_dialog_build()
-                
-            elif menu_item == self.project_menu_edit_pieces:
-                self.project_build(self.wk_project_name)
-
-        elif self.screen_name == self.ProjectScreenName:
+        if self.screen_name == self.ProjectScreenName:
             
             if menu_item == self.piece_menu_knit:
-                # TODO: add what to do here
-                self.knit_piece(self.wk_piece_name)            
+                self.knit_piece() 
+                
             elif menu_item == self.piece_menu_edit_name:
-                self.edit_field_dialog_build()
+                self.dialog_field_build()
                 
             elif menu_item == self.piece_menu_edit_steps:
                 self.piece_steps_edit_build(self.wk_piece_name)
@@ -473,41 +549,44 @@ class MainApp(MDApp):
                 self.piece_steps_table_build(self.wk_piece_name)    
             
         else:
-            # TODO: add what to do here
             Snackbar(text=menu_item).open()
-         
-    def item_list_menu_build(self, instance):
+
+
+    def item_list_menu_on_release(self, instance):
         '''
         '''
+        # if on the main screen, click through to the list of project pieces
         if self.screen_name == self.RootScreenName:
             self.set_project_vars(instance.text)
-            
+            self.project_build(self.wk_project_name)
+
+        # if on the project pieces screen, build set menu options
         elif self.screen_name == self.ProjectScreenName:
             self.set_piece_vars(instance.text)
             
-        menu_items = [
-            {"viewclass": "OneLineListItem",
-             "text": i,
-             "height": dp(56),
-             "on_release": lambda x=i:  self.item_list_menu_callback(x),
-             } for i in self.list_menu_labels]
+            menu_items = [
+                {"viewclass": "OneLineListItem",
+                 "text": i,
+                 "height": dp(56),
+                 "on_release": lambda x=i:  self.item_list_menu_callback(x),
+                 } for i in self.list_menu_labels]
+    
+            self.list_menu = MDDropdownMenu(caller=instance,
+                                            items=menu_items,
+                                            width_mult=4)
+            
+            self.list_menu.open()
 
-        self.list_menu = MDDropdownMenu(caller=instance,
-                                        items=menu_items,
-                                        width_mult=4)
-        
-        self.list_menu.open()
 
 # =============================================================================
 # edit field dialog box build
 # =============================================================================
-    def edit_field_dialog_build(self):
+    def dialog_field_build(self):
         '''
         popup dialog used to edit a field (e.g., project name)
         '''
-        # if not self.edit_field_dialog:
         self.edit_field_dialog = MDDialog(
-            title="Edit {}:".format(self.edit_field_name),
+            title=self.edit_field_name,
             type="custom",
             pos_hint = {'center_x': .5, 'top': .9},
             content_cls=EditFieldDialog(),
@@ -516,27 +595,24 @@ class MainApp(MDApp):
                     text="Cancel",
                     theme_text_color="Custom",
                     text_color=self.theme_cls.primary_color,
-                    on_release=self.edit_field_dismiss),
+                    on_release=self.dialog_field_dismiss),
                 MDFlatButton(
                     text="Save",
                     theme_text_color="Custom",
                     text_color=self.theme_cls.primary_color,
-                    on_release=self.edit_field_name_save,
-                    )
-                ]
-            )
+                    on_release=self.dialog_field_name_save)])
         
         self.edit_field_dialog.open()
         
         
-    def edit_field_dismiss(self, inst):
+    def dialog_field_dismiss(self, inst):
         '''
         dismiss the dialog box
         '''
         self.edit_field_dialog.dismiss()
 
 
-    def edit_field_name_save(self, inst):
+    def dialog_field_name_save(self, inst):
         '''
         check to make sure name is unique then save if it is
         '''
@@ -550,44 +626,102 @@ class MainApp(MDApp):
             edit_field.error = True
             
         else:
-            # if editing the project name
-            if self.edit_field_name == 'Project Name':
-                self.edit_project_name_save(new_name)
+            # if creating or editing a project name
+            if 'Project Name' in self.edit_field_name:
+                self.dialog_project_name_save(new_name)
 
-            # if editing the piece name, update the piece in projects
-            elif self.edit_field_name == 'Piece Name':
-                self.edit_piece_name_save(new_name)
+            # if creating or editing a piece name
+            elif 'Piece Name' in self.edit_field_name:
+                self.dialog_piece_name_save(new_name)
             
-            self.write_projects()
             self.edit_field_dialog.dismiss()
 
 
-    def edit_project_name_save(self, new_name):
+    def dialog_project_name_save(self, new_name):
         '''
         '''
-        self.projects[new_name] = self.projects.pop(self.wk_project_name)
+        self.wk_project_name = new_name
         
-        if os.path.exists(self.wk_project_data_dir):
-            os.rename(self.wk_project_data_dir,'{0}/{1}'.format(
-                self.data_dir,new_name)) 
+        new_path = os.path.join(self.data_dir,new_name)
         
-        self.project_build(new_name)
-        
-        
-    def edit_piece_name_save(self, new_name):
-        '''
-        '''
-        self.wk_project['Pieces'][new_name] = \
-            self.wk_project['Pieces'].pop(self.wk_piece_name)
-        
-        if os.path.exists(self.wk_substeps_path):
+        # rename the project folder if editing a project name
+        if 'Edit' in self.edit_field_name:
+            os.rename(self.wk_project_data_dir, new_path) 
             
-            self.wk_substeps_file = '{}.json'.format(new_name)
+        # create the project folder if creating a new project
+        elif 'New' in self.edit_field_name:
+            # create project directories
+            if not os.path.exists(new_path):
+                os.makedirs(new_path)
+                
+        # refresh the list of saved projects
+        self.get_project_list()
+
+        self.project_build(self.wk_project_name)
+        
+        
+    def dialog_piece_name_save(self, new_name):
+        '''
+        '''
+        self.wk_piece_name = new_name
+
+        # rename the pieces files if editing a project name
+        if 'Edit' in self.edit_field_name:
             
-            os.rename(self.wk_substeps_path,
-                      self.set_substeps_filepath())
+            old_substeps_filename = self.wk_substeps_filename
+            old_piece_filename = self.wk_piece_filename
+
+            self.set_piece_filenames()
+
+            if os.path.exists(old_substeps_filename):
+                os.rename(old_substeps_filename, self.wk_substeps_filename)
+            if os.path.exists(old_piece_filename):
+                os.rename(old_piece_filename, self.wk_piece_filename)
+        
+            self.project_build(self.wk_project_name)
+
+        # create pieces folders/file if creating a new piece
+        elif 'New' in self.edit_field_name:
             
-        self.piece_steps_edit_build(new_name)
+            # add the first step to the piece
+            self.wk_piece = []
+            
+            self.create_step()
+            
+    def create_project(self):
+        '''
+        use edit field dialog to create a new project
+        '''
+        self.edit_field_name = 'New Project Name'
+        self.edit_field_check_list = self.project_list
+        self.edit_field_text = ''
+        self.dialog_field_build()
+
+    def create_piece(self):
+        '''
+        use edit field dialog to create a new piece
+        '''
+        self.edit_field_name = 'New Piece Name'
+        self.edit_field_check_list = self.wk_pieces_list
+        self.edit_field_text = ''
+        self.dialog_field_build()
+        
+        
+    def create_step(self):
+        
+        step = self.new_step_dict.copy()
+        step['Code'] = step['Code'] + str(len(self.wk_piece)+1)
+        
+        self.wk_piece.append(step)
+        
+        self.wk_step_idx = self.step_get_work_dict(step['Code'])
+
+        self.set_piece_filenames()
+        
+        self.write_wk_piece()
+        
+        self.piece_steps_edit_build(self.wk_piece_name)
+
 
 # =============================================================================
 # gui build - root screen
@@ -605,15 +739,11 @@ class MainApp(MDApp):
         self.toolbar_title = 'Projects'
         
         self.clear_layout()
-
-
-        self.read_projects()
         
         self.menu_build(self.root_menu_labels)
         
-        self.item_list_build(self.projects.keys(),
+        self.item_list_build(self.project_list,
                              self.root.ids.content_main)
-
 
 # =============================================================================
 # gui build - project page (listing pices)
@@ -644,7 +774,7 @@ class MainApp(MDApp):
         # self.root.ids.header.text = 'Select a step to edit'
         
         # build the list of pieces
-        self.item_list_build(self.wk_pieces,
+        self.item_list_build(self.wk_pieces_list,
                              self.root.ids.content_main)
         
         # build the edit pieces buttons
@@ -662,15 +792,13 @@ class MainApp(MDApp):
 # =============================================================================
 # substep fuctions used while knitting
 # =============================================================================
-    def calc_substeps(self,piece_name):
+    def calc_substeps(self):
         '''
         '''
                
         self.wk_substeps = []
-        wk_piece = self.wk_project['Pieces'][piece_name]
-
         
-        for idx, step in enumerate(wk_piece):
+        for idx, step in enumerate(self.wk_piece):
             StepRow = step['StartRow']
             HowOften = step['HowOften']
             HowManyTimes = step['HowManyTimes']
@@ -691,7 +819,7 @@ class MainApp(MDApp):
                 StepRow =  StepRow + HowOften
                 CodeStepNum += 1
 
-        self.write_substeps(piece_name)
+        self.write_wk_substeps(self.wk_piece_name)
 
 
     def get_current_substeps(self,step_row):
@@ -706,24 +834,21 @@ class MainApp(MDApp):
         
 #TODO: save progress for project/step
 
-    def knit_piece(self, piece_name):
+    def knit_piece(self):
         '''
         '''
         # show and clear anything left in the main layout
         self.clear_layout()
 
-
         #TODO: if work in progress then calc substeps
-        self.calc_substeps(piece_name)
+        self.get_wk_substeps()
+        
+        self.calc_substeps()
         #TODO: else read substeps and set working row
         
         self.knit_piece_content_build()
         self.knit_piece_button_build()
 
-        #TODO: open work substeps screen
-        #button to move forward row
-        #button to move back row
-        #button to jump to step      
         
     def knit_piece_content_build(self,step_row=45):
         
@@ -763,10 +888,10 @@ class MainApp(MDApp):
         # add widget to the content area
         self.root.ids.content_main.add_widget(scroll) 
 
+
     def knit_piece_button_build(self):
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content_col)
-
 
         # create list and add the items
         mdlist = MDList()     
@@ -794,9 +919,9 @@ class MainApp(MDApp):
         '''
         if instance.text == self.piece_knit_button_previous:
             self.knit_piece_content_build(self.knit_step_row-1)
-            # Snackbar(text=str(self.knit_step_row-1)).open()
             
         elif instance.text == self.piece_knit_button_jump:
+            #TODO: button to jump to step      
             Snackbar(text=instance.text).open()
             
         elif instance.text == self.piece_knit_button_next:
@@ -967,10 +1092,8 @@ class MainApp(MDApp):
             
             # update the piece with step values and write the changes
             self.wk_piece[self.wk_step_idx] = step
-            
-            self.wk_project['Pieces'][self.wk_piece_name][self.wk_step_idx] = step
-            
-            self.write_projects()  
+                        
+            self.write_wk_piece()  
             
             self.set_project_vars(self.wk_project_name)
             self.set_piece_vars(self.wk_piece_name, self.wk_step_idx)
@@ -978,20 +1101,21 @@ class MainApp(MDApp):
             # update the buttons
             self.steps_code_buttons_build()
             
-    
-    def open_color_picker(self):
+# =============================================================================
+# color picker 
+# =============================================================================
+    def color_picker_open(self):
         '''
         '''
         self.color_picker = MDColorPicker(
             size_hint=(0.45, 0.85),
             default_color=self.wk_step['FontColor'],
+            type_color='HEX'
             
             )
         self.color_picker.open()
-        self.color_picker.bind(
-            on_select_color=self.on_select_color,
-            on_release=self.get_selected_color,
-        )
+        self.color_picker.bind(on_select_color=self.on_select_color,
+                               on_release=self.get_selected_color,)
 
 
     def update_color(self, color: list) -> None:
@@ -1004,12 +1128,15 @@ class MainApp(MDApp):
 
     def get_selected_color(self,
                            instance_color_picker: MDColorPicker,
-                           type_color: str,
+                           type_color: 'str',
                            selected_color: Union[list, str]):
         '''
         '''
         self.update_color(selected_color[:-1] + [1])
         self.color_picker.dismiss()
+
+        if self.color_picker_dialog:
+            self.color_picker_dialog.dismiss()
 
 
     def color_picker_dismiss(self,inst):
@@ -1017,23 +1144,95 @@ class MainApp(MDApp):
         '''
         self.color_picker.dismiss()
 
+
+
+
     def on_select_color(self, instance_gradient_tab, color: list) -> None:
         '''
         Called when a gradient image is clicked.
         '''
 
+    def dialog_color_picker_open(self):
+        '''
+        popup dialog used to edit a field (e.g., project name)
+        '''
+        self.color_picker_dialog = MDDialog(
+            title='Click a color to select',
+            text='Click "More Colors" to select a different color',
+            type="custom",
+            pos_hint = {'center_x': .5, 'top': .9},
+            content_cls=ColorPickerDialog(),
+            )
         
+        self.color_picker_dialog.open()
+        
+        
+    def dialog_color_picker_save(self, inst):
+        '''
+        save the color selected in the color picker dialog
+        '''
+        self.update_color(inst.md_bg_color)
+        self.color_picker_dialog.dismiss()
+
+
+# =============================================================================
+# settings page
+# =============================================================================
+    def build_config(self, config):
+        """
+        Set the default values for the configs sections.
+        """
+        
+        self.app_settings_label = 'App Settings'
+
+        config.setdefaults(self.app_settings_label, 
+                           {'style': 'Dark', 
+                            'palette': 'Gray',
+                            'hue': '500',
+                            'color_select1': 'e0f2f1ff',# Teal 50
+                            'color_select2': 'efebe9ff',# Brown 50
+                            'color_select3': 'ffffffff',# White
+                            'color_select4': 'bbdefbff',# Blue
+                            'color_select5': 'f8bbd0',# Pink
+                            })
+        
+   
+    def build_settings(self, settings):
+        """
+        Add our custom section to the default configuration object.
+        """
+        settings.add_json_panel(self.app_settings_label, self.config, data=kv.settings_json)
+        
+
+    def on_config_change(self, config, section, key, value):
+        """
+        Respond to changes in the configuration.
+        """
+        if section == self.app_settings_label:
+            if key == "style":
+                self.theme_cls.theme_style = value
+            elif key == 'palette':
+                self.theme_cls.primary_palette = value
+            elif key == 'hue':
+                self.theme_cls.primary_hue = value
+
+
+    def close_settings(self, settings=None):
+        """
+        The settings panel has been closed.
+        """
+        super(KnitApp, self).close_settings(settings)
+
 # =============================================================================
 # build application
 # =============================================================================
     def build(self):
         '''
         '''
-        self.set_vars()   
-        self.set_vars_layout()
+        self.set_app_vars()   
         self.root_build()
         
 
 
 if __name__ == '__main__':
-    MainApp().run()
+    KnitApp().run()
