@@ -69,7 +69,11 @@ class SettingButtons(SettingItem):
         return
     
     def On_ButtonPressed(self,instance):
-        self.panel.settings.dispatch('on_config_change',self.panel.config, self.section, self.key, instance.ID)
+        self.panel.settings.dispatch('on_config_change',
+                                     self.panel.config, 
+                                     self.section, 
+                                     self.key, 
+                                     instance.ID)
 
 
 class KnitApp(MDApp):
@@ -95,6 +99,8 @@ class KnitApp(MDApp):
                 }
             }
     '''
+    
+    
     def set_data_dir(self):
         '''
         set the data directory to the user data directory for the app
@@ -144,10 +150,36 @@ class KnitApp(MDApp):
         self.wk_pieces_list = os.listdir(self.wk_pieces_dir)
         self.wk_pieces_list = [name.split('.')[0] for name in self.wk_pieces_list]
 
+
+    def get_wk_in_progress(self):
+        '''
+        get work in progress for a piece, or create one if there is not one
+        '''
+        
+        if os.path.exists(self.wk_in_progress_filename):
+            with open(self.wk_in_progress_filename) as json_file:     
+                 self.wk_piece_in_progress = json.load(json_file)
+
+        else:
+            self.wk_piece_in_progress = self.new_wk_in_progress
+            
+        self.knit_step_row = self.wk_piece_in_progress['StepRow'] 
+
+
     def get_wk_substeps(self):
         '''
         get substeps list from the working project directory
         '''
+        self.get_wk_in_progress()
+        
+        if (self.wk_piece_in_progress['StepRow'] > 1 and 
+            os.path.exists(self.wk_substeps_filename)):
+            
+                with open(self.wk_substeps_filename) as json_file:     
+                     self.wk_substeps = json.load(json_file)
+                     
+        else:
+            self.calc_substeps()
 
 
     def write_wk_piece(self):
@@ -158,15 +190,28 @@ class KnitApp(MDApp):
 
         with open(self.wk_piece_filename, 'w') as f:
             json.dump(self.wk_piece, f)
-                    
+               
+            
+    def write_wk_step_in_progress(self):
+        '''
+        '''
+        self.wk_piece_in_progress['StepRow'] = self.knit_step_row
         
+        with open(self.wk_in_progress_filename, 'w') as f:
+            json.dump(self.wk_piece_in_progress, f)
+
+
     def write_wk_substeps(self,piece_name):
         '''
         write a json file for the working substeps dictionary
         '''
-            
         with open(self.wk_substeps_filename, 'w') as f:
             json.dump(self.wk_substeps, f)
+            
+        
+        self.write_wk_step_in_progress()
+            
+
                     
         
     def read_piece(self,piece_name):
@@ -189,10 +234,6 @@ class KnitApp(MDApp):
         '''        
         self.toolbar_title = project_name       
         
-        # set menu labels fpr on_release of a list item
-        self.list_menu_labels = self.list_menu_labels_project
-        
-        # self.wk_project = self.projects[project_name]
         self.wk_project_name = project_name
 
         self.wk_project_data_dir = os.path.join(self.data_dir,
@@ -204,12 +245,14 @@ class KnitApp(MDApp):
         self.wk_substeps_dir = os.path.join(self.wk_project_data_dir,
                                             'Substeps')
 
+        self.wk_in_progress_dir = os.path.join(self.wk_project_data_dir,
+                                               'WorkInProgress')
+
         self.get_wk_pieces_list()        
 
         self.edit_field_name = 'Edit Project Name'
         self.edit_field_text = self.wk_project_name
         self.edit_field_check_list = self.project_list
-
 
         
     def set_piece_vars(self,piece_name,selected_piece_idx = 0):
@@ -242,19 +285,24 @@ class KnitApp(MDApp):
         set filenames for project pieces and substeps
         '''
         
-        # create the path if it doesn't exist
-        if not os.path.exists(self.wk_pieces_dir):
-            os.makedirs(self.wk_pieces_dir)
-
-        # create the path if it doesn't exist
-        if not os.path.exists(self.wk_substeps_dir):
-            os.makedirs(self.wk_substeps_dir)
+        dirs = [self.wk_pieces_dir,
+                self.wk_substeps_dir,
+                self.wk_in_progress_dir]
+        
+        for d in dirs:
+            # create the path if it doesn't exist
+            if not os.path.exists(d):
+                os.makedirs(d)
 
         self.wk_piece_filename = os.path.join(self.wk_pieces_dir, 
                                    self.wk_piece_name + '.json')
         
         self.wk_substeps_filename = os.path.join(self.wk_substeps_dir, 
                                    self.wk_piece_name + '.json')
+
+        self.wk_in_progress_filename = os.path.join(self.wk_in_progress_dir, 
+                                                    self.wk_piece_name \
+                                                        + '.json')
 
 
 # =============================================================================
@@ -268,48 +316,7 @@ class KnitApp(MDApp):
         self.set_data_dir()
 
         # define custom settings options
-        self.settings_cls = SettingsWithTabbedPanel
-
-        self.theme_cls.theme_style = self.config.get(self.app_settings_label,
-                                                     'style')
-        self.theme_cls.primary_palette = self.config.get(self.app_settings_label,
-                                                     'palette')
-        
-        self.color_select1 = utils.get_color_from_hex(
-            self.config.get(self.app_settings_label,
-                            'color_select1'))[:-1] + [1]
-        
-        self.color_select2 = utils.get_color_from_hex(
-            self.config.get(self.app_settings_label,
-                            'color_select2'))[:-1] + [1]
-        self.color_select3 = utils.get_color_from_hex(
-            self.config.get(self.app_settings_label,
-                            'color_select3'))[:-1] + [1]
-        self.color_select4 = utils.get_color_from_hex(
-            self.config.get(self.app_settings_label,
-                            'color_select4'))[:-1] + [1]
-        self.color_select5 = utils.get_color_from_hex(
-            self.config.get(self.app_settings_label,
-                            'color_select5'))[:-1] + [1]
-        
-        print(self.color_select2)
-
-        # self.color_select1 = [0.8784313725490196, 
-        #                       0.9490196078431372, 
-        #                       0.9450980392156862, 1]# Teal 50
-        # self.color_select2 = [0.9372549019607843, 
-        #                       0.9215686274509803, 
-        #                       0.9137254901960784, 1]# Brown 50
-        # self.color_select3 = '000000'
-        
-        # self.color_select4 = [0.7333333333333333, 
-        #                        0.8705882352941177, 
-        #                        0.984313725490196, 1]# Blue
-
-        # self.color_select5 = [0.9725490196078431, 
-        #                       0.7333333333333333, 
-        #                       0.8156862745098039, 1]# Pink
-
+        self.set_settings_vars()
 
         # get the list of saved projects
         self.get_project_list()
@@ -327,6 +334,7 @@ class KnitApp(MDApp):
                                  self.menu_item_settings]
 
 
+        # project toolbar menu
         self.project_menu_add_piece = 'Add New Piece'
         self.project_menu_edit_name = 'Edit Project Name'
         self.project_menu_back_to_root = 'Back to Projects'
@@ -336,29 +344,30 @@ class KnitApp(MDApp):
                                     self.project_menu_edit_name,
                                     self.project_menu_back_to_root,]
         
-        self.project_menu_edit_pieces = 'Edit Pieces'
-
-        self.list_menu_labels_project = [self.project_menu_edit_name,
-                                         self.project_menu_edit_pieces,]
-
-
+        # piece select list menu
         self.piece_menu_knit = 'Knit Piece'
-        self.piece_menu_show_steps = 'Show Steps Table'
-        self.piece_menu_edit_steps = 'Edit Steps'
-        self.piece_menu_edit_name = 'Edit Piece Name'
+        self.piece_menu_edit_steps = 'Edit Piece'
         
         self.list_menu_labels_piece = [self.piece_menu_knit,
-                                       # self.piece_menu_show_steps,
-                                       self.piece_menu_edit_steps,
-                                       self.piece_menu_edit_name,]
+                                       self.piece_menu_edit_steps,]
 
-
+        # piece page toolbar menu
         self.piece_menu_add_step = 'Add New Step'
+        self.piece_menu_delete_step = 'Delete Selected Step'
         self.piece_menu_back_to_project = 'Back to Project Pieces'
+        self.piece_menu_edit_name = 'Edit Piece Name'
 
         self.piece_menu_labels = [self.piece_menu_add_step,
+                                  self.piece_menu_delete_step,
+                                  self.piece_menu_edit_name,
                                   self.piece_menu_back_to_project,]
         
+        
+        self.piece_knit_menu_reset = 'Reset progress'
+
+        self.piece_knit_menu_labels = [self.piece_knit_menu_reset,
+                                       self.piece_menu_back_to_project,
+                                       ]
         
         self.piece_knit_button_previous = 'Previous Step'
         self.piece_knit_button_jump = 'Jump to Step'
@@ -369,14 +378,17 @@ class KnitApp(MDApp):
                                          self.piece_knit_button_next]
 
         
-        self.new_step_dict = {"Code": "Code",
+        self.new_step_dict = {"StepRow": 1,
                               "Action": "",
                               "HowManyTimes": 1, 
                               "HowOften": 1, 
                               "StartRow": 1, 
                               "FontColor": self.color_select1
                               }
-        
+
+        self.new_wk_in_progress = {"StepRow": 1}
+
+
         self.toolbar_title = 'Projects'
         
         self.StepEditScreenName = 'stepedit'
@@ -460,43 +472,53 @@ class KnitApp(MDApp):
         elif self.screen_name == self.ProjectScreenName:
             self.project_menu_callback(menu_item)
 
-        elif self.screen_name == self.PieceScreenName:
+        elif self.screen_name in [self.PieceScreenName,
+                                  self.PieceKnitScreenName]:
             self.piece_menu_callback(menu_item)
 
 
-    def root_menu_callback(self, text_item):
+    def root_menu_callback(self, menu_item):
         '''
         '''
-        if text_item == self.root_menu_create_project:
+        if menu_item == self.root_menu_create_project:
             self.create_project()
 
-    def project_menu_callback(self, text_item):
+
+    def project_menu_callback(self, menu_item):
         '''
         '''
-        if text_item == self.project_menu_add_piece:
+        if menu_item == self.project_menu_add_piece:
             self.create_piece()
             
-        elif text_item == self.project_menu_edit_name:
+        elif menu_item == self.project_menu_edit_name:
             self.dialog_field_build()
 
-        elif text_item == self.project_menu_back_to_root:
+        elif menu_item == self.project_menu_back_to_root:
             self.root_build()
     
 
-    def piece_menu_callback(self, text_item):
+    def piece_menu_callback(self, menu_item):
         '''
         '''
 
-        if text_item == self.piece_menu_add_step:
+        if menu_item == self.piece_menu_add_step:
             self.create_step()
-                          
-        elif text_item == self.piece_menu_back_to_project:
+            
+        elif menu_item == self.piece_menu_edit_name:
+            self.dialog_field_build()
+        
+        elif menu_item == self.piece_menu_delete_step:
+            self.step_delete()
+                
+        elif menu_item == self.piece_menu_back_to_project:
             
             self.step_save()
             
             if self.validation_error == False:
                 self.project_build(self.wk_project_name)
-
+                
+        elif menu_item == self.piece_knit_menu_reset:
+            self.knit_piece_reset_progress()
 
 # =============================================================================
 # gui build - list of items in scrollview
@@ -537,13 +559,10 @@ class KnitApp(MDApp):
         if self.screen_name == self.ProjectScreenName:
             
             if menu_item == self.piece_menu_knit:
-                self.knit_piece() 
-                
-            elif menu_item == self.piece_menu_edit_name:
-                self.dialog_field_build()
+                self.knit_piece_build() 
                 
             elif menu_item == self.piece_menu_edit_steps:
-                self.piece_steps_edit_build(self.wk_piece_name)
+                self.piece_edit_build()
                 
             elif menu_item == self.piece_menu_show_steps:
                 self.piece_steps_table_build(self.wk_piece_name)    
@@ -678,7 +697,7 @@ class KnitApp(MDApp):
             if os.path.exists(old_piece_filename):
                 os.rename(old_piece_filename, self.wk_piece_filename)
         
-            self.project_build(self.wk_project_name)
+            self.piece_edit_build()
 
         # create pieces folders/file if creating a new piece
         elif 'New' in self.edit_field_name:
@@ -720,7 +739,7 @@ class KnitApp(MDApp):
         
         self.write_wk_piece()
         
-        self.piece_steps_edit_build(self.wk_piece_name)
+        self.piece_edit_build()
 
 
 # =============================================================================
@@ -823,38 +842,36 @@ class KnitApp(MDApp):
 
 
     def get_current_substeps(self,step_row):
-        
-        self.knit_step_row = step_row
-        
+                
         current_substeps = [
             sub['StepRow'] == step_row for sub in self.wk_substeps]
         
         self.step_row_substeps = list(compress(self.wk_substeps,
                                      current_substeps))
-        
-#TODO: save progress for project/step
 
-    def knit_piece(self):
+
+    def knit_piece_build(self):
         '''
         '''
+        self.screen_name =  self.PieceKnitScreenName
+
         # show and clear anything left in the main layout
         self.clear_layout()
-
-        #TODO: if work in progress then calc substeps
-        self.get_wk_substeps()
         
-        self.calc_substeps()
-        #TODO: else read substeps and set working row
+        self.menu_build(self.piece_knit_menu_labels) 
+
+        # get or create work substeps and row
+        self.get_wk_substeps()
         
         self.knit_piece_content_build()
         self.knit_piece_button_build()
 
         
-    def knit_piece_content_build(self,step_row=45):
+    def knit_piece_content_build(self):
         
         self.widget_visible(self.root.ids.content_main)
 
-        self.get_current_substeps(step_row)
+        self.get_current_substeps(self.knit_step_row)
         
         # build the list of pieces
         mdlist = MDList()        
@@ -918,30 +935,43 @@ class KnitApp(MDApp):
         '''
         '''
         if instance.text == self.piece_knit_button_previous:
-            self.knit_piece_content_build(self.knit_step_row-1)
+            self.knit_step_row -= 1
+            self.knit_piece_content_build()
             
         elif instance.text == self.piece_knit_button_jump:
             #TODO: button to jump to step      
             Snackbar(text=instance.text).open()
             
         elif instance.text == self.piece_knit_button_next:
-            self.knit_piece_content_build(self.knit_step_row+1)
+            self.knit_step_row += 1
+            self.knit_piece_content_build()
 
+        self.write_wk_step_in_progress()
+        
+    
+    def knit_piece_reset_progress(self):
+        '''
+        reset knitting progress on a piece
+        '''
+        self.knit_step_row = 1
+        self.write_wk_step_in_progress()
+        self.knit_piece_build()
+        
 # =============================================================================
-# gui build - piece page (listing steps)    
+# gui build - piece edit (listing steps)    
 # ============================================================================
         
-    def piece_steps_edit_build(self, piece_name):
+    def piece_edit_build(self):
         '''
         '''
-        self.piece_steps_prep(piece_name)
+        self.piece_edit_prep(self.wk_piece_name)
 
         # build the code buttons and edit screen
         self.steps_code_buttons_build()
         self.step_edit_fields_build()
         
         
-    def piece_steps_prep(self,piece_name):
+    def piece_edit_prep(self,piece_name):
         '''
         '''
         # set variables for the selected working piece
@@ -1040,7 +1070,7 @@ class KnitApp(MDApp):
         self.step_edit_layout.ids.often_entry.text = str(step['HowOften'])
         
         # self.step_edit_layout.ids.font_entry.md_bg_color = step['FontColor']
-        self.root.ids.header.text = 'Edit piece: ' + step['Code']
+        self.root.ids.header.text = 'Edit step: ' + step['Code']
 
 
     def step_int_type_check(self):
@@ -1100,7 +1130,24 @@ class KnitApp(MDApp):
             
             # update the buttons
             self.steps_code_buttons_build()
+    
+    
+    def step_delete(self):
+        '''
+        '''
+        del self.wk_piece[self.wk_step_idx]
+        
+        if self.wk_piece:
+            self.write_wk_piece()  
             
+            self.set_project_vars(self.wk_project_name)
+            self.set_piece_vars(self.wk_piece_name)
+            
+            # update the buttons
+            self.piece_edit_build()
+        else:
+            self.create_step()
+        
 # =============================================================================
 # color picker 
 # =============================================================================
@@ -1145,12 +1192,11 @@ class KnitApp(MDApp):
         self.color_picker.dismiss()
 
 
-
-
     def on_select_color(self, instance_gradient_tab, color: list) -> None:
         '''
         Called when a gradient image is clicked.
         '''
+        
 
     def dialog_color_picker_open(self):
         '''
@@ -1215,6 +1261,21 @@ class KnitApp(MDApp):
                 self.theme_cls.primary_palette = value
             elif key == 'hue':
                 self.theme_cls.primary_hue = value
+            elif key == 'color_select1':
+                self.color_select1 = \
+                    utils.get_color_from_hex(value)[:-1] + [1]                
+            elif key == 'color_select2':
+                self.color_select2 = \
+                    utils.get_color_from_hex(value)[:-1] + [1]                
+            elif key == 'color_select3':
+                self.color_select3 = \
+                    utils.get_color_from_hex(value)[:-1] + [1]                
+            elif key == 'color_select4':
+                self.color_select4 = \
+                    utils.get_color_from_hex(value)[:-1] + [1]                
+            elif key == 'color_select5':
+                self.color_select5 = \
+                    utils.get_color_from_hex(value)[:-1] + [1]                
 
 
     def close_settings(self, settings=None):
@@ -1222,6 +1283,37 @@ class KnitApp(MDApp):
         The settings panel has been closed.
         """
         super(KnitApp, self).close_settings(settings)
+
+
+    def set_settings_vars(self):
+        '''
+        set variables to use the options from settings config
+        '''
+        
+        # define custom settings options
+        self.settings_cls = SettingsWithTabbedPanel
+
+        self.theme_cls.theme_style = self.config.get(self.app_settings_label,
+                                                      'style')
+        self.theme_cls.primary_palette = self.config.get(self.app_settings_label,
+                                                      'palette')
+        
+        self.color_select1 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select1'))[:-1] + [1]
+        self.color_select2 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select2'))[:-1] + [1]
+        self.color_select3 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select3'))[:-1] + [1]
+        self.color_select4 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select4'))[:-1] + [1]
+        self.color_select5 = utils.get_color_from_hex(
+            self.config.get(self.app_settings_label,
+                            'color_select5'))[:-1] + [1]
+
 
 # =============================================================================
 # build application

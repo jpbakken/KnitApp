@@ -229,7 +229,7 @@ MDGridLayout:
     MDRaisedButton:
         id: font_entry
         text: 'Set Step Color'
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+        pos_hint: {'center_x': 0.5, 'top': 1}
         on_release: app.dialog_color_picker_open()
 
 
