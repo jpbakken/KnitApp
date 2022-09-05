@@ -5,11 +5,13 @@
 @author: jpbakken
 """
 import kv
+import dropbox
+from itertools import compress
 import json
-from typing import Union
 import os
 import shutil
-from itertools import compress
+from typing import Union
+import zipfile
 
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -29,6 +31,9 @@ from kivymd.uix.list import TwoLineListItem
 from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.pickers import MDColorPicker
 from kivymd.uix.snackbar import Snackbar
+
+
+
 
 
 class EditFieldDialog(MDBoxLayout):
@@ -132,7 +137,8 @@ class KnitApp(MDApp):
         '''
         get and sort project list from the app data directory
         '''
-        self.project_list = [d for d in next(os.walk(self.data_dir))[1]]
+        self.project_list = [d for d in next(os.walk(self.data_dir))[1] \
+                             if d != '_backups']
         self.project_list.sort()
         
         
@@ -321,6 +327,7 @@ class KnitApp(MDApp):
 
         # set names for the root toolbar menu
         self.root_menu_create_project = 'Create New Project'
+        
         self.root_menu_labels = [self.root_menu_create_project,
                                  self.menu_item_settings]
 
@@ -329,11 +336,14 @@ class KnitApp(MDApp):
         self.project_menu_add_piece = 'Add New Piece'
         self.project_menu_edit_name = 'Edit Project Name'
         self.project_menu_back_to_root = 'Back to Projects'
+        self.project_menu_project_backup = 'Backup Project'
         
         
         self.project_menu_labels = [self.project_menu_add_piece,
                                     self.project_menu_edit_name,
-                                    self.project_menu_back_to_root,]
+                                    self.project_menu_back_to_root,
+                                    self.project_menu_project_backup,
+                                    ]
         
         # piece select list menu
         self.piece_menu_knit = 'Knit Piece'
@@ -488,6 +498,9 @@ class KnitApp(MDApp):
 
         elif menu_item == self.project_menu_back_to_root:
             self.root_build()
+            
+        elif menu_item == self.project_menu_project_backup:
+            self.project_backup()
     
 
     def piece_menu_callback(self, menu_item):
@@ -948,7 +961,7 @@ class KnitApp(MDApp):
         
         # build the list of pieces
         mdlist = MDList()        
-
+        mdlist.add_widget(TwoLineListItem(disabled=True))
         # iterate through items and build the scroll list
         for i in self.step_row_substeps:
             
@@ -1369,7 +1382,7 @@ class KnitApp(MDApp):
                             'color_select3': 'ffffffff',# White
                             'color_select4': 'bbdefbff',# Blue
                             'color_select5': 'f8bbd0',# Pink
-                            })
+                            'dropbox_token': ''})
         
    
     def build_settings(self, settings):
@@ -1404,7 +1417,10 @@ class KnitApp(MDApp):
                     utils.get_color_from_hex(value)[:-1] + [1]                
             elif key == 'color_select5':
                 self.color_select5 = \
-                    utils.get_color_from_hex(value)[:-1] + [1]                
+                    utils.get_color_from_hex(value)[:-1] + [1]    
+                    
+            elif key == 'dropbox_token':
+                self.dropbox_token = value
 
 
     def close_settings(self, settings=None):
@@ -1442,7 +1458,75 @@ class KnitApp(MDApp):
         self.color_select5 = utils.get_color_from_hex(
             self.config.get(self.app_settings_label,
                             'color_select5'))[:-1] + [1]
+        
+        self.dropbox_token = self.config.get(self.app_settings_label,
+                                             'dropbox_token')
 
+# =============================================================================
+# create a compressed backup and save to dropbox
+# =============================================================================
+
+
+
+    # compress file function
+    def zip_file(self,file_path):
+        compress_file = zipfile.ZipFile(file_path + '.zip', 'w')
+        compress_file.write(file_path, compress_type=zipfile.ZIP_DEFLATED)
+        compress_file.close()
+    
+    
+    # Declare the function to return all file paths of the particular directory
+    def zip_get_file_paths(self,dir_name):
+        # setup file paths variable
+        file_paths = []
+    
+        # Read all directory, subdirectories and file lists
+        for root, directories, files in os.walk(dir_name):
+            for filename in files:
+                # Create the full file path by using os module.
+                file_path = os.path.join(root, filename)
+                file_paths.append(file_path)
+    
+        # return all paths
+        return file_paths
+    
+    
+    def zip_dir(self,dir_path, file_paths):
+        # write files and folders to a zipfile
+        compress_dir = zipfile.ZipFile(dir_path + '.zip', 'w')
+        with compress_dir:
+            # write each file separately
+            for file in file_paths:
+                compress_dir.write(file)
+
+
+    def project_backup(self):
+        
+        os.chdir(self.data_dir)
+        
+        path = self.wk_project_name
+        files_path = self.zip_get_file_paths(path)
+
+        self.zip_dir(path, files_path)
+        
+        zip_path = self.wk_project_name + '.zip'
+        backup_path = os.path.join('_backups', zip_path)
+        os.rename(zip_path,backup_path)
+        
+        dropbox_access_token = self.dropbox_token
+        
+        dropbox_path = "/" + zip_path
+        
+        client = dropbox.Dropbox(dropbox_access_token)
+        client.files_upload(open(backup_path, "rb").read(), 
+                            dropbox_path,
+                            mode=dropbox.files.WriteMode.overwrite)
+
+        MDDialog(
+            title='Backup Complete',
+            text='{} has been backed up to Dropbox'.format(
+                self.wk_project_name),
+            pos_hint = {'center_x': .5, 'top': .9}).open()
 
 # =============================================================================
 # build application
