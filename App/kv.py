@@ -76,7 +76,7 @@ MDGridLayout:
         id: edit_field
         hint_text: app.edit_field_name
         text: app.edit_field_text
-        helper_text: 'There can be only one...project name must be unique'
+        helper_text: 'There can be only one...name must be unique'
         helper_text_mode: 'on_error'
    
         
@@ -156,12 +156,8 @@ MDGridLayout:
 '''
 
 scroll_list_widget = '''
-# MDFloatLayout:
-ScrollView:
-    # pos_hint: {'top': .7}
-    # size_hint_y: None
-    # height: mdlist.height
 
+ScrollView:    
     MDList:
         id: mdlist
 

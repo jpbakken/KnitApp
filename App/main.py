@@ -1,46 +1,35 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Wed Aug 17 16:26:35 2022
 
 @author: jpbakken
 """
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Aug 13 15:09:47 2022
-
-@author: jpbakken
-"""
+import kv
 import json
 from typing import Union
 import os
 import shutil
+from itertools import compress
 
-from kivymd.app import MDApp
 from kivy.lang import Builder
 from kivy.metrics import dp
-from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.list import OneLineListItem, TwoLineListItem
-from kivymd.uix.pickers import MDColorPicker
 from kivy.uix.settings import SettingsWithTabbedPanel
 from kivy.uix.settings import SettingItem
-# from kivy.uix.settings import Settings
-# from kivy.uix.settings import SettingColor
+from kivy.uix.scrollview import ScrollView
 import kivy.utils as utils
 
-from kivymd.uix.snackbar import Snackbar
-from kivy.uix.scrollview import ScrollView
-from kivymd.uix.list import MDList
+from kivymd.app import MDApp
+from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.button import MDFlatButton
 from kivymd.uix.dialog import MDDialog
-from itertools import compress
-import kv
-# from kivymd.uix.datatables import MDDataTable
-# from kivy.uix.label import Label
-# from kivymd.uix.gridlayout import MDGridLayout
-from kivymd.uix.boxlayout import MDBoxLayout
+from kivymd.uix.list import OneLineListItem
+from kivymd.uix.list import MDList
+from kivymd.uix.list import TwoLineListItem
+from kivymd.uix.menu import MDDropdownMenu
+from kivymd.uix.pickers import MDColorPicker
+from kivymd.uix.snackbar import Snackbar
+
 
 class EditFieldDialog(MDBoxLayout):
     pass
@@ -77,9 +66,13 @@ class SettingButtons(SettingItem):
 
 
 class KnitApp(MDApp):
+# =============================================================================
+# initialize empty dialog variables
+# =============================================================================
     use_kivy_settings = False
     color_picker = None
     edit_field_dialog = None
+    knit_piece_complete = None
 
 # =============================================================================
 # data methods
@@ -196,12 +189,12 @@ class KnitApp(MDApp):
         '''
         '''
         self.wk_piece_in_progress['StepRow'] = self.knit_step_row
-        
+                
         with open(self.wk_in_progress_filename, 'w') as f:
             json.dump(self.wk_piece_in_progress, f)
 
 
-    def write_wk_substeps(self,piece_name):
+    def write_wk_substeps(self):
         '''
         write a json file for the working substeps dictionary
         '''
@@ -211,10 +204,8 @@ class KnitApp(MDApp):
         
         self.write_wk_step_in_progress()
             
-
-                    
         
-    def read_piece(self,piece_name):
+    def read_piece(self):
         '''
         '''
         with open(self.wk_piece_filename, 'r') as json_file:     
@@ -270,7 +261,7 @@ class KnitApp(MDApp):
         self.set_piece_filenames()
 
         # read the piece file
-        self.read_piece(self.wk_piece_name)
+        self.read_piece()
         
         # set variable for the selected step or the first step
         self.wk_step = self.wk_piece[selected_piece_idx]
@@ -356,9 +347,10 @@ class KnitApp(MDApp):
         self.piece_menu_delete_step = 'Delete Selected Step'
         self.piece_menu_back_to_project = 'Back to Project Pieces'
         self.piece_menu_edit_name = 'Edit Piece Name'
-
+        
         self.piece_menu_labels = [self.piece_menu_add_step,
                                   self.piece_menu_delete_step,
+                                  self.piece_menu_knit,
                                   self.piece_menu_edit_name,
                                   self.piece_menu_back_to_project,]
         
@@ -423,7 +415,6 @@ class KnitApp(MDApp):
         self.widget_visible(self.root.ids.content_col)
         self.widget_visible(self.root.ids.content_main)
 
-        
 
 # =============================================================================
 # gui build - toolbar menu
@@ -460,12 +451,14 @@ class KnitApp(MDApp):
 
     def menu_callback(self, menu_item):
         '''
+        main menu callback. calls page-specific menu items
+            or items that can be found on multiple pages
         '''
         self.menu.dismiss()
         
         if menu_item == 'Settings':
             self.open_settings()
-            
+                                
         elif self.screen_name == self.RootScreenName:
             self.root_menu_callback(menu_item)
 
@@ -504,21 +497,29 @@ class KnitApp(MDApp):
         if menu_item == self.piece_menu_add_step:
             self.create_step()
             
-        elif menu_item == self.piece_menu_edit_name:
-            self.dialog_field_build()
-        
         elif menu_item == self.piece_menu_delete_step:
             self.step_delete()
                 
+        elif menu_item == self.piece_menu_knit:
+            self.knit_piece_build() 
+
+        elif menu_item == self.piece_menu_edit_name:
+            self.dialog_field_build()
+        
+
         elif menu_item == self.piece_menu_back_to_project:
             
-            self.step_save()
-            
-            if self.validation_error == False:
-                self.project_build(self.wk_project_name)
+            if self.screen_name == self.PieceScreenName:
+                self.step_save()
                 
+                if self.validation_error == False:
+                    self.project_build(self.wk_project_name)
+                    
+            elif self.screen_name == self.PieceKnitScreenName:
+                self.project_build(self.wk_project_name)
+
         elif menu_item == self.piece_knit_menu_reset:
-            self.knit_piece_reset_progress()
+            self.dialog_knit_piece_reset()
 
 # =============================================================================
 # gui build - list of items in scrollview
@@ -637,31 +638,49 @@ class KnitApp(MDApp):
         '''
         # set variables for shortcuts
         edit_field = self.edit_field_dialog.content_cls.ids.edit_field
-        new_name = edit_field.text
+        new_value = edit_field.text
 
         # check to make sure new name is not already used in projects
         if next((key for key in self.edit_field_check_list \
-                 if key == new_name), None):
+                 if key == new_value), None):
             edit_field.error = True
             
         else:
             # if creating or editing a project name
             if 'Project Name' in self.edit_field_name:
-                self.dialog_project_name_save(new_name)
+                edit_field.helper_text=\
+                    'There can be only one...name must be unique'
+                self.dialog_project_name_save(new_value)
 
             # if creating or editing a piece name
             elif 'Piece Name' in self.edit_field_name:
-                self.dialog_piece_name_save(new_name)
+                self.dialog_piece_name_save(new_value)
+                
             
-            self.edit_field_dialog.dismiss()
+            elif self.edit_field_name == self.piece_knit_button_jump:
+                end_row = self.wk_piece_in_progress['EndRow']
+                
+                if new_value.isnumeric() == False:
+                    edit_field.helper_text='Wait...that is not a number'
+                    edit_field.error = True
+                    
+                elif int(new_value) > end_row:
+                    edit_field.helper_text='Hold your horses...{0} has only {1} rows.' \
+                        .format(self.wk_piece_name,end_row)
+                    edit_field.error = True
 
-
-    def dialog_project_name_save(self, new_name):
+                else:
+                    self.dialog_piece_jump_save(new_value)
+                    
+                
+    def dialog_project_name_save(self, new_value):
         '''
         '''
-        self.wk_project_name = new_name
+        self.edit_field_dialog.dismiss()
         
-        new_path = os.path.join(self.data_dir,new_name)
+        self.wk_project_name = new_value
+        
+        new_path = os.path.join(self.data_dir,new_value)
         
         # rename the project folder if editing a project name
         if 'Edit' in self.edit_field_name:
@@ -679,24 +698,34 @@ class KnitApp(MDApp):
         self.project_build(self.wk_project_name)
         
         
-    def dialog_piece_name_save(self, new_name):
+    def dialog_piece_name_save(self, new_value):
         '''
         '''
-        self.wk_piece_name = new_name
+        self.edit_field_dialog.dismiss()
+        
+        self.wk_piece_name = new_value
 
         # rename the pieces files if editing a project name
         if 'Edit' in self.edit_field_name:
             
             old_substeps_filename = self.wk_substeps_filename
             old_piece_filename = self.wk_piece_filename
-
+            old_in_progres_filename = self.wk_in_progress_filename
+            
             self.set_piece_filenames()
 
             if os.path.exists(old_substeps_filename):
-                os.rename(old_substeps_filename, self.wk_substeps_filename)
+                os.rename(old_substeps_filename, 
+                          self.wk_substeps_filename)
+                
             if os.path.exists(old_piece_filename):
-                os.rename(old_piece_filename, self.wk_piece_filename)
-        
+                os.rename(old_piece_filename, 
+                          self.wk_piece_filename)
+            
+            if os.path.exists(old_in_progres_filename):
+                os.rename(old_in_progres_filename, 
+                          self.wk_in_progress_filename)
+                
             self.piece_edit_build()
 
         # create pieces folders/file if creating a new piece
@@ -706,6 +735,19 @@ class KnitApp(MDApp):
             self.wk_piece = []
             
             self.create_step()
+            
+            
+    def dialog_piece_jump_save(self,new_value):
+        '''
+        on the knit page, jump to a specific step
+        '''
+        self.edit_field_dialog.dismiss()
+        
+        self.knit_step_row = int(new_value)
+        self.knit_piece_content_build()
+        
+        self.write_wk_step_in_progress()
+
             
     def create_project(self):
         '''
@@ -727,19 +769,30 @@ class KnitApp(MDApp):
         
         
     def create_step(self):
-        
+        '''
+        '''
         step = self.new_step_dict.copy()
         step['Code'] = step['Code'] + str(len(self.wk_piece)+1)
         
         self.wk_piece.append(step)
         
-        self.wk_step_idx = self.step_get_work_dict(step['Code'])
+        self.wk_step_idx = self.step_get_work_idx(step['Code'])
 
         self.set_piece_filenames()
         
         self.write_wk_piece()
         
         self.piece_edit_build()
+        
+        
+    def piece_knit_jump_to_step(self):
+        '''
+        '''
+        self.edit_field_name = self.piece_knit_button_jump
+        self.edit_field_check_list = [0]
+        self.edit_field_text = str(self.knit_step_row)
+
+        self.dialog_field_build()
 
 
 # =============================================================================
@@ -838,13 +891,33 @@ class KnitApp(MDApp):
                 StepRow =  StepRow + HowOften
                 CodeStepNum += 1
 
-        self.write_wk_substeps(self.wk_piece_name)
+        self.get_min_max_knit_row()
+        
+        self.write_wk_substeps()
 
+    def get_min_max_knit_row(self):
+        '''
+        '''
+        
+        self.wk_piece_in_progress['StartRow'] = 999
+        self.wk_piece_in_progress['EndRow'] = 0
+        
+        for step in self.wk_substeps:
+            if step['StepRow'] < self.wk_piece_in_progress['StartRow']:
+                self.wk_piece_in_progress['StartRow'] = step['StepRow']
+            
+            if step['StepRow'] > self.wk_piece_in_progress['EndRow']:
+                self.wk_piece_in_progress['EndRow'] = step['StepRow']
+           
+                
+        # start = [step['StepRow'] for step in steps if step['StepRow'] < start]
+        # end = [step['StepRow'] for step in steps if step['StepRow'] > end]
+        
 
-    def get_current_substeps(self,step_row):
+    def get_current_substeps(self):
                 
         current_substeps = [
-            sub['StepRow'] == step_row for sub in self.wk_substeps]
+            sub['StepRow'] == self.knit_step_row for sub in self.wk_substeps]
         
         self.step_row_substeps = list(compress(self.wk_substeps,
                                      current_substeps))
@@ -871,7 +944,7 @@ class KnitApp(MDApp):
         
         self.widget_visible(self.root.ids.content_main)
 
-        self.get_current_substeps(self.knit_step_row)
+        self.get_current_substeps()
         
         # build the list of pieces
         mdlist = MDList()        
@@ -894,7 +967,8 @@ class KnitApp(MDApp):
                     secondary_text_color = [0,0,0,1],
                     secondary_font_style = 'Caption',
                     bg_color=i['FontColor'],
-                    theme_text_color='Custom',)
+                    theme_text_color='Custom',
+                    on_release=self.knit_piece_next_step)
                 )
                         
         # add list to the scroll view
@@ -910,12 +984,17 @@ class KnitApp(MDApp):
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content_col)
 
-        # create list and add the items
-        mdlist = MDList()     
+        scroll = Builder.load_string(kv.scroll_list_widget)  
+        mdlist = scroll.ids.mdlist
         
         for button in self.piece_knit_button_labels:
-            mdlist.add_widget(OneLineListItem(size_hint = (1, .25)))
             
+            # add a disabled item for spacer
+            mdlist.add_widget(OneLineListItem(
+                size_hint = (1, .25),
+                disabled = True))
+            
+            # add the button
             button = MDRaisedButton(
                         text=button,
                         size_hint = (1,.8),
@@ -923,10 +1002,6 @@ class KnitApp(MDApp):
                         )
                     
             mdlist.add_widget(button)
-                    
-        # add list to the scroll view
-        scroll = ScrollView()
-        scroll.add_widget(mdlist)
         
         self.root.ids.content_col.add_widget(scroll)
 
@@ -935,27 +1010,81 @@ class KnitApp(MDApp):
         '''
         '''
         if instance.text == self.piece_knit_button_previous:
-            self.knit_step_row -= 1
-            self.knit_piece_content_build()
+            self.knit_piece_previous_step()
             
         elif instance.text == self.piece_knit_button_jump:
-            #TODO: button to jump to step      
-            Snackbar(text=instance.text).open()
+            self.piece_knit_jump_to_step()
             
         elif instance.text == self.piece_knit_button_next:
-            self.knit_step_row += 1
+            self.knit_piece_next_step()
+            
+        self.write_wk_step_in_progress()
+    
+    def knit_piece_next_step(self, inst=None):
+        '''
+        advance to the next step
+        '''
+        self.knit_step_row += 1
+        
+        if self.knit_step_row > self.wk_piece_in_progress['EndRow']:
+            self.dialog_knit_piece_reset()
+            
+        else:
             self.knit_piece_content_build()
 
-        self.write_wk_step_in_progress()
+    def knit_piece_previous_step(self, inst=None):
+        '''
         
+        '''
+        # do not move steps into negative numbers
+        if self.knit_step_row > 1:
+            self.knit_step_row -= 1
+            
+        self.knit_piece_content_build()
     
-    def knit_piece_reset_progress(self):
+    def knit_piece_reset(self, inst=None):
         '''
         reset knitting progress on a piece
         '''
+        self.knit_piece_complete.dismiss()
         self.knit_step_row = 1
         self.write_wk_step_in_progress()
         self.knit_piece_build()
+
+
+    def dialog_knit_piece_reset(self):
+        '''
+        '''
+        self.knit_piece_complete = MDDialog(
+            title='Reset Progress?',
+            text='Click OK to reset progress or ' \
+                + 'Cancel to go back to the last step',
+            type='alert',
+            pos_hint = {'center_x': .5, 'top': .9},
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.dialog_knit_piece_complete_dismiss,),
+                MDFlatButton(
+                    text="OK",
+                    theme_text_color="Custom",
+                    text_color=self.theme_cls.primary_color,
+                    on_release=self.knit_piece_reset
+                    )])
+        
+        self.knit_piece_complete.open()
+        
+        
+    def dialog_knit_piece_complete_dismiss(self, inst):
+        '''
+        dismiss the dialog
+        '''
+        self.knit_step_row -= 1
+        self.knit_piece_content_build()
+        
+        self.knit_piece_complete.dismiss()
         
 # =============================================================================
 # gui build - piece edit (listing steps)    
@@ -1038,7 +1167,7 @@ class KnitApp(MDApp):
         self.step_set_text(self.wk_step['Code'])        
 
 
-    def step_get_work_dict(self,step_code):
+    def step_get_work_idx(self,step_code):
         '''
         '''
         # get the dict values for the selected step
@@ -1057,7 +1186,7 @@ class KnitApp(MDApp):
         set peice to saved values
         '''
         # set variable with the index of the current step
-        self.wk_step_idx = self.step_get_work_dict(step_code)
+        self.wk_step_idx = self.step_get_work_idx(step_code)
         
         # set variable with the working step dictionary items
         self.wk_step = self.wk_piece[self.wk_step_idx]
@@ -1095,8 +1224,8 @@ class KnitApp(MDApp):
         '''
         step_code = self.step_edit_layout.ids.code_entry.text
         
-        if (self.step_get_work_dict(step_code) > -1 and 
-            self.step_get_work_dict(step_code) != self.wk_step_idx):
+        if (self.step_get_work_idx(step_code) > -1 and 
+            self.step_get_work_idx(step_code) != self.wk_step_idx):
             
             self.step_edit_layout.ids.code_entry.error = True
             self.validation_error = True
