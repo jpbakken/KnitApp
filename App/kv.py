@@ -275,6 +275,16 @@ settings_json = '''
       "title": "Default Color Button 5",
       "desc": "Set default color button options for step settings",
       "section": "App Settings",
-      "key": "color_select5"}
+      "key": "color_select5"},
+    {"type": "string",
+      "title": "Apple Id",
+      "desc": "Apple Id to be used for project backup and recovery",
+      "section": "App Settings",
+      "key": "apple_id"},
+    {"type": "string",
+      "title": "Apple Password",
+      "desc": "Apple password to be used for project backup and recovery",
+      "section": "App Settings",
+      "key": "apple_password"}
 ]
 '''

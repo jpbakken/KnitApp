@@ -5,10 +5,11 @@
 @author: jpbakken
 """
 import kv
-import dropbox
+from datetime import datetime
 from itertools import compress
 import json
 import os
+from pyicloud import PyiCloudService
 import shutil
 from typing import Union
 import zipfile
@@ -78,6 +79,8 @@ class KnitApp(MDApp):
     color_picker = None
     edit_field_dialog = None
     knit_piece_complete = None
+    icloud = None
+    icloud_action = None
 
 # =============================================================================
 # data methods
@@ -138,7 +141,7 @@ class KnitApp(MDApp):
         get and sort project list from the app data directory
         '''
         self.project_list = [d for d in next(os.walk(self.data_dir))[1] \
-                             if d != '_backups']
+                             if d not in ['_backups','_cookies']]
         self.project_list.sort()
         
         
@@ -327,8 +330,9 @@ class KnitApp(MDApp):
 
         # set names for the root toolbar menu
         self.root_menu_create_project = 'Create New Project'
-        
+        # self.root_menu_icloud_auth = 'Authenticate iCloud'
         self.root_menu_labels = [self.root_menu_create_project,
+                                 # self.root_menu_icloud_auth,
                                  self.menu_item_settings]
 
 
@@ -380,12 +384,13 @@ class KnitApp(MDApp):
                                          self.piece_knit_button_next]
 
         
-        self.new_step_dict = {"StepRow": 1,
-                              "Action": "",
-                              "HowManyTimes": 1, 
-                              "HowOften": 1, 
-                              "StartRow": 1, 
-                              "FontColor": self.color_select1
+        self.new_step_dict = {'Code': 'Code',
+                              'StepRow': 1,
+                              'Action': '',
+                              'HowManyTimes': 1, 
+                              'HowOften': 1, 
+                              'StartRow': 1, 
+                              'FontColor': self.color_select1
                               }
 
         self.new_wk_in_progress = {"StepRow": 1}
@@ -485,6 +490,9 @@ class KnitApp(MDApp):
         '''
         if menu_item == self.root_menu_create_project:
             self.create_project()
+            
+        if menu_item == self.root_menu_icloud_auth:
+            self.icloud_auth()
 
 
     def project_menu_callback(self, menu_item):
@@ -759,8 +767,7 @@ class KnitApp(MDApp):
         self.knit_step_row = int(new_value)
         self.knit_piece_content_build()
         
-        self.write_wk_step_in_progress()
-
+        
             
     def create_project(self):
         '''
@@ -855,8 +862,6 @@ class KnitApp(MDApp):
 
         # update the toolbar title and menu items
         self.menu_build(self.project_menu_labels)            
-
-        # self.root.ids.header.text = 'Select a step to edit'
         
         # build the list of pieces
         self.item_list_build(self.wk_pieces_list,
@@ -864,7 +869,8 @@ class KnitApp(MDApp):
         
         # build the edit pieces buttons
         self.project_pieces_buttons_build()
-        
+        #TODO: delete project
+        #TODO: copy prjoect
 
     def project_pieces_buttons_build(self):
         '''
@@ -873,6 +879,8 @@ class KnitApp(MDApp):
         # show and clear anything left in the widget
         self.widget_visible(self.root.ids.content_col)
         
+#TODO: delete piece
+#TODO: copy piece
 
 # =============================================================================
 # substep fuctions used while knitting
@@ -955,6 +963,8 @@ class KnitApp(MDApp):
         
     def knit_piece_content_build(self):
         
+        self.write_wk_step_in_progress()
+        
         self.widget_visible(self.root.ids.content_main)
 
         self.get_current_substeps()
@@ -986,7 +996,6 @@ class KnitApp(MDApp):
                         
         # add list to the scroll view
         scroll = ScrollView()
-        #TODO: get the scroll into the cetnter of the screen?
         scroll.add_widget(mdlist)
 
         # add widget to the content area
@@ -1031,8 +1040,7 @@ class KnitApp(MDApp):
         elif instance.text == self.piece_knit_button_next:
             self.knit_piece_next_step()
             
-        self.write_wk_step_in_progress()
-    
+            
     def knit_piece_next_step(self, inst=None):
         '''
         advance to the next step
@@ -1382,7 +1390,8 @@ class KnitApp(MDApp):
                             'color_select3': 'ffffffff',# White
                             'color_select4': 'bbdefbff',# Blue
                             'color_select5': 'f8bbd0',# Pink
-                            'dropbox_token': ''})
+                            'apple_id': 'jpbakken@gmail.com',
+                            'apple_password':''})
         
    
     def build_settings(self, settings):
@@ -1419,9 +1428,11 @@ class KnitApp(MDApp):
                 self.color_select5 = \
                     utils.get_color_from_hex(value)[:-1] + [1]    
                     
-            elif key == 'dropbox_token':
-                self.dropbox_token = value
-
+            elif key == 'apple_id':
+                self.apple_id = value
+            elif key == 'apple_password':
+                self.apple_password = value
+                self.icloud_auth()
 
     def close_settings(self, settings=None):
         """
@@ -1459,8 +1470,10 @@ class KnitApp(MDApp):
             self.config.get(self.app_settings_label,
                             'color_select5'))[:-1] + [1]
         
-        self.dropbox_token = self.config.get(self.app_settings_label,
-                                             'dropbox_token')
+        self.apple_id = self.config.get(self.app_settings_label,
+                                             'apple_id')
+        self.apple_password = self.config.get(self.app_settings_label,
+                                             'apple_password')
 
 # =============================================================================
 # create a compressed backup and save to dropbox
@@ -1501,7 +1514,8 @@ class KnitApp(MDApp):
 
 
     def project_backup(self):
-        
+        '''
+        '''
         os.chdir(self.data_dir)
         
         path = self.wk_project_name
@@ -1509,24 +1523,150 @@ class KnitApp(MDApp):
 
         self.zip_dir(path, files_path)
         
-        zip_path = self.wk_project_name + '.zip'
-        backup_path = os.path.join('_backups', zip_path)
-        os.rename(zip_path,backup_path)
-        
-        dropbox_access_token = self.dropbox_token
-        
-        dropbox_path = "/" + zip_path
-        
-        client = dropbox.Dropbox(dropbox_access_token)
-        client.files_upload(open(backup_path, "rb").read(), 
-                            dropbox_path,
-                            mode=dropbox.files.WriteMode.overwrite)
+        self.zip_path = self.wk_project_name + '.zip'
+        self.backup_path = os.path.join('_backups', self.zip_path)
 
+        if not self.icloud:
+            # self.dialog(text='Authenticate iCloud First')
+            self.icloud_action = 'upload'
+            self.icloud_auth()
+            
+        else:
+            self.icloud_upload()
+        
+
+
+# =============================================================================
+# icloud drive functions
+# =============================================================================
+
+    def icloud_auth(self):
+        '''
+        '''
+        cookie_directory = os.path.join(self.data_dir,'_cookies')
+        
+        self.edit_field_name = 'Authentication Code'
+        self.edit_field_text = ''
+        
+
+        if not self.icloud:
+            self.icloud = PyiCloudService(self.apple_id,
+                                          self.apple_password,
+                                          cookie_directory=cookie_directory,
+                                          )
+        
+        if not self.icloud.is_trusted_session:
+            self.dialog_icloud_code()
+            
+        else:
+            if self.icloud_action == 'upload':
+                self.icloud_upload()
+
+            
+    def icloud_2f(self):
+        '''
+        '''
+
+        result = self.icloud.validate_2fa_code(self.api_code)
+        
+        if not result:
+            self.dialog()
+    
+        if not self.icloud.is_trusted_session:
+            self.dialog(
+                text="Session is not trusted. Requesting trust...")    
+            result = self.icloud.trust_session()
+            
+            if not result:
+                self.dialog(
+                    text="Failed to request trust. You will likely be prompted for the code again in the coming weeks")
+
+
+    def dialog_icloud_code(self):
+        '''
+        popup dialog used to enter authorization code
+        '''
+        self.icloud_code_dialog = MDDialog(
+            title='Enter Code',
+            type="custom",
+            pos_hint = {'center_x': .5, 'top': .9},
+            content_cls=EditFieldDialog(),
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    on_release=self.dialog_icloud_dismiss),
+                MDFlatButton(
+                    text="Save",
+                    on_release=self.dialog_icloud_save)])
+        
+        self.icloud_code_dialog.open()
+
+
+    def dialog(self,
+                title='Failed', 
+                text='Verification failed. Please try again.'):
+        
+        MDDialog(title=title,
+                  text=text,
+                  pos_hint = {'center_x': .5, 'top': .9}).open()
+
+
+    def dialog_icloud_dismiss(self, inst):
+        '''
+        dismiss the dialog
+        '''
+        self.icloud_code_dialog.dismiss()
+
+        
+    def dialog_icloud_save(self, inst):
+        '''
+        '''
+        self.api_code = self.icloud_code_dialog.content_cls.ids.edit_field.text
+        
+        self.icloud_2f()
+        
+        self.dialog_icloud_dismiss(inst)
+        
+        if self.icloud_action == 'upload':
+            self.icloud_upload()
+        
+        
+        
+    def icloud_upload(self):
+        '''
+        '''
+
+        app_name = 'KnitRows'
+        # if not app_name in api.drive.dir():
+            # api.drive.mkdir(app_name)
+        
+        file = self.zip_path
+        icloud_file = self.icloud.drive[app_name][file]
+        
+        file_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        
+        if icloud_file:
+            icloud_file.rename(file.replace('zip',file_time + '.zip'))
+            
+        with open(file, 'rb') as f:
+            self.icloud.drive[app_name].upload(f)
+            
+        os.rename(self.zip_path,self.backup_path)
+
+        
         MDDialog(
             title='Backup Complete',
-            text='{} has been backed up to Dropbox'.format(
+            text='{} has been backed up'.format(
                 self.wk_project_name),
-            pos_hint = {'center_x': .5, 'top': .9}).open()
+            pos_hint = {'center_x': .5, 'top': .9}).open() 
+
+
+    def icloud_download(self, file):
+        '''
+        '''
+
+
+#TODO: restore from backup
 
 # =============================================================================
 # build application
@@ -1534,6 +1674,8 @@ class KnitApp(MDApp):
     def build(self):
         '''
         '''
+
+        
         self.set_app_vars()   
         self.root_build()
         
