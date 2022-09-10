@@ -79,6 +79,26 @@ MDGridLayout:
         helper_text: 'There can be only one...name must be unique'
         helper_text_mode: 'on_error'
    
+    
+<iCloudCredentialsDialog>
+    orientation: "vertical"
+    spacing: "12dp"
+    height: "120dp"
+
+    size_hint_y: None
+    
+    
+    MDTextField:
+        id: apple_id
+        hint_text: 'Enter Apple Id'
+        text: app.apple_id
+
+    MDTextField:
+        id: apple_password
+        hint_text: 'Enter Apple Password'
+        text: app.apple_password    
+        password: True
+        
         
 <ColorPickerDialog>
     orientation: "vertical"
@@ -233,7 +253,7 @@ MDGridLayout:
 '''
 
 
-settings_json = '''
+app_settings_json = '''
 [
     {"type": "string",
      "title": "Theme Style",
@@ -250,7 +270,6 @@ settings_json = '''
      "desc": "Choose the hue: 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, A100, A200, A400, A700",
      "section": "App Settings",
      "key": "hue"},
-    
     {"type": "color",
      "title": "Default Color Button 1",
      "desc": "Set default color button options for step settings",
@@ -275,16 +294,22 @@ settings_json = '''
       "title": "Default Color Button 5",
       "desc": "Set default color button options for step settings",
       "section": "App Settings",
-      "key": "color_select5"},
-    {"type": "string",
-      "title": "Apple Id",
-      "desc": "Apple Id to be used for project backup and recovery",
-      "section": "App Settings",
-      "key": "apple_id"},
-    {"type": "string",
-      "title": "Apple Password",
-      "desc": "Apple password to be used for project backup and recovery",
-      "section": "App Settings",
-      "key": "apple_password"}
+      "key": "color_select5"}
+]
+'''
+
+backup_settings_json = '''
+
+[
+    {"type": "numeric",
+      "title": "Local backups to keep",
+      "desc": "How many local backups should be kept?",
+      "section": "Backups",
+      "key": "backups_local"},
+    {"type": "numeric",
+      "title": "iCloud backups to keep",
+      "desc": "How many iCloud backups should be kept?",
+      "section": "Backups",
+      "key": "backups_icloud"}
 ]
 '''

@@ -8,11 +8,13 @@ import kv
 from datetime import datetime
 from itertools import compress
 import json
+from cryptography.fernet import Fernet
 import os
 from pyicloud import PyiCloudService
 import shutil
 from typing import Union
 import zipfile
+import threading
 
 from kivy.lang import Builder
 from kivy.metrics import dp
@@ -35,7 +37,8 @@ from kivymd.uix.snackbar import Snackbar
 
 
 
-
+class iCloudCredentialsDialog(MDBoxLayout):
+    pass
 
 class EditFieldDialog(MDBoxLayout):
     pass
@@ -81,7 +84,10 @@ class KnitApp(MDApp):
     knit_piece_complete = None
     icloud = None
     icloud_action = None
+    backup_dirname = '_backups'
+    app_name = 'KnitRows'
 
+    
 # =============================================================================
 # data methods
 # =============================================================================
@@ -112,7 +118,10 @@ class KnitApp(MDApp):
         self.data_dir = app.user_data_dir
         self.copy_data_dir()
 
-
+        self.encrypted_filepath = os.path.join(self.data_dir
+                                               ,'_cookies','.tree')
+        
+        
     def copy_data_dir(self):
         '''
         if self.data_dir is empty, copy the sample data dir
@@ -141,7 +150,8 @@ class KnitApp(MDApp):
         get and sort project list from the app data directory
         '''
         self.project_list = [d for d in next(os.walk(self.data_dir))[1] \
-                             if d not in ['_backups','_cookies']]
+                             if d not in [self.backup_dirname,
+                                          '_cookies']]
         self.project_list.sort()
         
         
@@ -247,6 +257,12 @@ class KnitApp(MDApp):
 
         self.wk_in_progress_dir = os.path.join(self.wk_project_data_dir,
                                                'WorkInProgress')
+        
+        self.wk_project_backup_dir = os.path.join(self.data_dir,
+                                                  self.backup_dirname,
+                                                  self.wk_project_name)
+        if not os.path.exists(self.wk_project_backup_dir):
+            os.makedirs(self.wk_project_backup_dir)
 
         self.get_wk_pieces_list()        
 
@@ -312,6 +328,9 @@ class KnitApp(MDApp):
         """
         Define variables that can be used throughout
         """
+ 
+        key = 'sBmu4_hZR6osbj7N__jO-SfOY8Q13QSoypcXQ3_Pvp4='
+        self.fernet = Fernet(key)
 
         self.set_data_dir()
 
@@ -330,9 +349,9 @@ class KnitApp(MDApp):
 
         # set names for the root toolbar menu
         self.root_menu_create_project = 'Create New Project'
-        # self.root_menu_icloud_auth = 'Authenticate iCloud'
+        self.root_menu_icloud_auth = 'Authenticate iCloud'
         self.root_menu_labels = [self.root_menu_create_project,
-                                 # self.root_menu_icloud_auth,
+                                  self.root_menu_icloud_auth,
                                  self.menu_item_settings]
 
 
@@ -404,6 +423,9 @@ class KnitApp(MDApp):
         self.ProjectScreenName = 'project'
         self.PieceScreenName = 'piece'
         self.PieceKnitScreenName = 'knit'
+        
+        self.icloud_read_encrypted()
+
 
 # =============================================================================
 # gui build - general
@@ -492,7 +514,7 @@ class KnitApp(MDApp):
             self.create_project()
             
         if menu_item == self.root_menu_icloud_auth:
-            self.icloud_auth()
+            self.dialog_icloud_login()
 
 
     def project_menu_callback(self, menu_item):
@@ -1380,7 +1402,8 @@ class KnitApp(MDApp):
         """
         
         self.app_settings_label = 'App Settings'
-
+        self.backup_settings_label = 'Backups'
+        
         config.setdefaults(self.app_settings_label, 
                            {'style': 'Dark', 
                             'palette': 'Gray',
@@ -1390,16 +1413,24 @@ class KnitApp(MDApp):
                             'color_select3': 'ffffffff',# White
                             'color_select4': 'bbdefbff',# Blue
                             'color_select5': 'f8bbd0',# Pink
-                            'apple_id': 'jpbakken@gmail.com',
-                            'apple_password':''})
+                            })
         
-   
+        config.setdefaults(self.backup_settings_label, 
+                           {'backups_local': 3, 
+                            'backups_icloud': 10,})
+
     def build_settings(self, settings):
         """
         Add our custom section to the default configuration object.
         """
-        settings.add_json_panel(self.app_settings_label, self.config, data=kv.settings_json)
+        settings.add_json_panel(self.app_settings_label, 
+                                self.config, 
+                                data=kv.app_settings_json)
         
+        settings.add_json_panel(self.backup_settings_label, 
+                                self.config, 
+                                data=kv.backup_settings_json)
+
 
     def on_config_change(self, config, section, key, value):
         """
@@ -1427,13 +1458,14 @@ class KnitApp(MDApp):
             elif key == 'color_select5':
                 self.color_select5 = \
                     utils.get_color_from_hex(value)[:-1] + [1]    
-                    
-            elif key == 'apple_id':
-                self.apple_id = value
-            elif key == 'apple_password':
-                self.apple_password = value
-                self.icloud_auth()
 
+        if section == self.backup_settings_label:
+            if key =='backups_local':
+                self.backups_local = value
+            if key =='backups_icloud':
+                self.backups_icloud = value                
+
+                    
     def close_settings(self, settings=None):
         """
         The settings panel has been closed.
@@ -1470,16 +1502,13 @@ class KnitApp(MDApp):
             self.config.get(self.app_settings_label,
                             'color_select5'))[:-1] + [1]
         
-        self.apple_id = self.config.get(self.app_settings_label,
-                                             'apple_id')
-        self.apple_password = self.config.get(self.app_settings_label,
-                                             'apple_password')
-
+        self.backups_icloud = self.config.get(self.backup_settings_label,
+                                              'backups_icloud')
+        self.backups_local = self.config.get(self.backup_settings_label,
+                                              'backups_local')
 # =============================================================================
 # create a compressed backup and save to dropbox
 # =============================================================================
-
-
 
     # compress file function
     def zip_file(self,file_path):
@@ -1512,8 +1541,7 @@ class KnitApp(MDApp):
             for file in file_paths:
                 compress_dir.write(file)
 
-
-    def project_backup(self):
+    def zip_project(self):
         '''
         '''
         os.chdir(self.data_dir)
@@ -1523,70 +1551,109 @@ class KnitApp(MDApp):
 
         self.zip_dir(path, files_path)
         
-        self.zip_path = self.wk_project_name + '.zip'
-        self.backup_path = os.path.join('_backups', self.zip_path)
-
-        if not self.icloud:
-            # self.dialog(text='Authenticate iCloud First')
-            self.icloud_action = 'upload'
-            self.icloud_auth()
-            
-        else:
-            self.icloud_upload()
+        file_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        zip_filename = self.wk_project_name + '.zip'
         
+        self.zip_filename = self.wk_project_name \
+            + '|' + file_time + '|.zip'
+        os.rename(zip_filename,self.zip_filename)
+
+        
+        self.backup_path = os.path.join(self.backup_dirname,
+                                        self.wk_project_name, 
+                                        self.zip_filename)
 
 
+
+# =============================================================================
+#   backups
+# =============================================================================
+    def project_backup(self):
+        '''
+        authenticate and process backup in a thread
+        --go through 2factor authenticate if needed
+        '''
+        self.icloud_action = 'backup'
+        self.icloud_thread_start(self.icloud_auth)
+        
+        # if an untrusted session is returned, go through 2f auth
+        if self.icloud:
+            if not self.icloud.is_trusted_session:
+                self.dialog_icloud_auth()
+
+
+    def project_del_local_backup(self,):
+        '''
+        '''
+        files = os.listdir(self.wk_project_backup_dir)
+        backups = []
+        for f in files:
+            if f.split('.')[-1] == 'zip':
+                backups.append(f)
+                
+                
+        backups.sort(reverse=True)
+        
+        for idx, backup in enumerate(backups):
+            if idx >= int(self.backups_local):
+                os.remove(os.path.join(self.wk_project_backup_dir,
+                                       backup))
+
+        
 # =============================================================================
 # icloud drive functions
 # =============================================================================
 
+    def icloud_thread_start(self,target):
+        self.icloud_thread = threading.Thread(target=target)
+        self.icloud_thread.start()
+        self.icloud_thread.join()
+
+    def icloud_read(self):
+        '''
+        '''
+        cookie_directory = os.path.join(self.data_dir,'_cookies')        
+
+        # create/refresh the connection to icloud
+        self.icloud = PyiCloudService(self.apple_id,
+                                      self.apple_password,
+                                      cookie_directory=cookie_directory,
+                                      )
+        
     def icloud_auth(self):
         '''
-        '''
-        cookie_directory = os.path.join(self.data_dir,'_cookies')
+        start icloud service with username and password
         
-        self.edit_field_name = 'Authentication Code'
-        self.edit_field_text = ''
-        
-
-        if not self.icloud:
-            self.icloud = PyiCloudService(self.apple_id,
-                                          self.apple_password,
-                                          cookie_directory=cookie_directory,
-                                          )
-        
-        if not self.icloud.is_trusted_session:
-            self.dialog_icloud_code()
-            
-        else:
-            if self.icloud_action == 'upload':
-                self.icloud_upload()
-
-            
-    def icloud_2f(self):
-        '''
-        '''
-
-        result = self.icloud.validate_2fa_code(self.api_code)
-        
-        if not result:
-            self.dialog()
+        return to do 2 factor authentication if session is untrusted
     
+        if authenticated, process the icloud action
+        '''
+        
+        self.icloud_read()
+        
+        # not trusted, break the thread and go through auth code steps
         if not self.icloud.is_trusted_session:
-            self.dialog(
-                text="Session is not trusted. Requesting trust...")    
-            result = self.icloud.trust_session()
-            
-            if not result:
-                self.dialog(
-                    text="Failed to request trust. You will likely be prompted for the code again in the coming weeks")
+            return
+        
+        # create the app folder if needed
+        if not self.app_name in self.icloud.drive.dir():
+            self.icloud.drive.mkdir(self.app_name)        
+            self.icloud_read()
+
+        # process the icloud action
+        else:
+            if self.icloud_action == 'backup':
+                self.icloud_backup()
 
 
-    def dialog_icloud_code(self):
+    def dialog_icloud_auth(self):
         '''
         popup dialog used to enter authorization code
         '''
-        self.icloud_code_dialog = MDDialog(
+        self.edit_field_name = 'Authentication Code'
+        self.edit_field_text = ''
+
+        self.icloud_auth_dialog = MDDialog(
             title='Enter Code',
             type="custom",
             pos_hint = {'center_x': .5, 'top': .9},
@@ -1594,12 +1661,36 @@ class KnitApp(MDApp):
             buttons=[
                 MDFlatButton(
                     text="Cancel",
-                    on_release=self.dialog_icloud_dismiss),
+                    on_release=self.dialog_icloud_auth_dismiss),
                 MDFlatButton(
                     text="Save",
-                    on_release=self.dialog_icloud_save)])
+                    on_release=self.dialog_icloud_2f)])
         
-        self.icloud_code_dialog.open()
+        self.icloud_auth_dialog.open()
+
+
+    def dialog_icloud_login(self):
+        '''
+        popup dialog used to save username and password
+        '''
+        self.edit_field_name = 'iCloud Authentication'
+        self.edit_field_text = ''
+        
+
+        self.icloud_login_dialog = MDDialog(
+            title='Log in with your Apple Id and password',
+            type="custom",
+            pos_hint = {'center_x': .5, 'top': .9},
+            content_cls=iCloudCredentialsDialog(),
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    on_release=self.dialog_icloud_login_dismiss),
+                MDFlatButton(
+                    text="Save",
+                    on_release=self.dialog_icloud_login_save)])
+        
+        self.icloud_login_dialog.open()
 
 
     def dialog(self,
@@ -1611,60 +1702,152 @@ class KnitApp(MDApp):
                   pos_hint = {'center_x': .5, 'top': .9}).open()
 
 
-    def dialog_icloud_dismiss(self, inst):
+    def dialog_icloud_auth_dismiss(self, inst):
         '''
         dismiss the dialog
         '''
-        self.icloud_code_dialog.dismiss()
+        self.icloud_auth_dialog.dismiss()
+
+
+    def dialog_icloud_login_dismiss(self, inst):
+        '''
+        dismiss the dialog
+        '''
+        self.icloud_login_dialog.dismiss()
 
         
-    def dialog_icloud_save(self, inst):
+    def dialog_icloud_login_save(self, inst):
+        '''
+        encrypt and save login details
+        
+        '''
+        self.apple_id = self.icloud_login_dialog.content_cls.ids.apple_id.text
+        self.apple_password = self.icloud_login_dialog.content_cls.ids.apple_password.text
+        self.icloud_write_encrypted()
+
+        self.icloud_login_dialog.dismiss()
+        
+        self.icloud_auth()        
+
+    def icloud_write_encrypted(self):
         '''
         '''
-        self.api_code = self.icloud_code_dialog.content_cls.ids.edit_field.text
+
+        data = {"apple_id":self.apple_id,
+                "apple_password": self.apple_password}
+        data_bytes = json.dumps(data).encode('utf-8')
+
+        encrypted = self.fernet.encrypt(data_bytes)
+
+        with open(self.encrypted_filepath, 'wb') as f:
+            f.write(encrypted)
+
+
+    def icloud_read_encrypted(self):
+        '''
+        '''
+        if not os.path.exists(self.encrypted_filepath):
+            self.apple_id = ''
+            self.apple_password = ''
+            self.icloud_write_encrypted()
+        
+        with open(self.encrypted_filepath, 'rb') as f:
+            data = f.read()
+        
+        # convert to string, and excape slashes
+        
+        decrypted = self.fernet.decrypt(data)
+        data_dict = json.loads(decrypted.decode('utf8'))
+    
+        # data = json.loads(data.decode('utf8'))
+
+        self.apple_id = data_dict['apple_id']
+        self.apple_password = data_dict['apple_password']
+    
+            
+            
+        
+    def dialog_icloud_2f(self, inst):
+        '''
+        use input from the dialog to do 2 factor authentication
+        
+        '''
+        self.api_code = self.icloud_auth_dialog.content_cls.ids.edit_field.text
+
+        result = self.icloud.validate_2fa_code(self.api_code)
+        
+        if not result:
+            self.dialog()
+    
+        elif not self.icloud.is_trusted_session:
+            self.dialog(
+                text="Session is not trusted. Requesting trust...")    
+            result = self.icloud.trust_session()
+            
+            if not result:
+                self.dialog(
+                    text="Failed to request trust. You will likely be prompted for the code again in the coming weeks")
+
+        elif self.icloud_action == 'backup':
+            
+            self.dialog(title='Authenticated' ,
+                        text='Proceeding with backup')
+            
         
         self.icloud_2f()
         
-        self.dialog_icloud_dismiss(inst)
+        self.dialog_icloud_auth_dismiss(inst)
         
-        if self.icloud_action == 'upload':
-            self.icloud_upload()
+        # try the backup again once authenticated
+        if self.icloud_action == 'backup':
+            self.project_backup()        
         
         
-        
-    def icloud_upload(self):
+    def icloud_backup(self):
         '''
-        '''
+        '''        
+        self.zip_project()
+        
+        app_dir = self.icloud.drive[self.app_name]
+                
+        if not self.wk_project_name in app_dir.dir():
+            app_dir.mkdir(self.wk_project_name)
+            self.icloud_read()
+            app_dir = self.icloud.drive[self.app_name]
 
-        app_name = 'KnitRows'
-        # if not app_name in api.drive.dir():
-            # api.drive.mkdir(app_name)
+        project_dir = app_dir[self.wk_project_name]
         
-        file = self.zip_path
-        icloud_file = self.icloud.drive[app_name][file]
-        
-        file_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-                        
-        if icloud_file:
-            icloud_file.rename(file.replace('zip',file_time + '.zip'))
-            
+        file = self.zip_filename
+                    
         with open(file, 'rb') as f:
-            self.icloud.drive[app_name].upload(f)
+            project_dir.upload(f)
             
-        os.rename(self.zip_path,self.backup_path)
+        os.rename(self.zip_filename,self.backup_path)
 
+        self.project_del_local_backup()
+        self.project_del_icloud_backup()
+
+
+    def project_del_icloud_backup(self):
+        '''
+        '''
+        files = self.icloud.drive[self.app_name][self.wk_project_name].dir()
+        backups = []
+        for f in files:
+            if f.split('.')[-1] == 'zip':
+                backups.append(f)
+                
+        backups.sort(reverse=True)
         
-        MDDialog(
-            title='Backup Complete',
-            text='{} has been backed up'.format(
-                self.wk_project_name),
-            pos_hint = {'center_x': .5, 'top': .9}).open() 
-
+        for idx, backup in enumerate(backups):
+            if idx >= int(self.backups_icloud):
+                self.icloud.drive[self.app_name]\
+                    [self.wk_project_name][backup].delete()
 
     def icloud_download(self, file):
         '''
         '''
-
+        
 
 #TODO: restore from backup
 
