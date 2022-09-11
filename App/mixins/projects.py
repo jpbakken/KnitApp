@@ -6,6 +6,9 @@ Created on Sat Sep 10 11:41:20 2022
 @author: jpbakken
 """
 import os
+import shutil
+
+# from kivymd.uix.snackbar import Snackbar
 
 class Projects():
     '''
@@ -38,11 +41,25 @@ class Projects():
         '''
         use edit field dialog to create a new project
         '''
-        self.edit_field_name = 'New Project Name'
         self.edit_field_check_list = self.project_list
         self.edit_field_text = ''
         self.dialog_field_build()
 
+    def copy_project(self):
+        '''
+        '''
+        self.edit_field_name = 'Copied Project Name'
+        self.create_project()
+
+        # Snackbar(text=self.wk_project_name).open()
+        
+    def delete_project(self):
+        '''
+        '''
+        shutil.rmtree(self.wk_project_data_dir)
+        shutil.rmtree(self.wk_project_backup_dir)
+
+        
 
     def set_project_vars(self,project_name):
         '''
@@ -67,6 +84,7 @@ class Projects():
         self.wk_project_backup_dir = os.path.join(self.data_dir,
                                                   self.backup_dirname,
                                                   self.wk_project_name)
+
         if not os.path.exists(self.wk_project_backup_dir):
             os.makedirs(self.wk_project_backup_dir)
 
@@ -80,7 +98,7 @@ class Projects():
 # =============================================================================
 # project page (listing pieces)
 # =============================================================================
-    def project_build(self, project_name):
+    def project_build(self):
         '''
         build the working project screen
             -- set toolbar title and menu items
@@ -95,7 +113,7 @@ class Projects():
         self.clear_layout()
 
         # set variables for the selected working project
-        self.set_project_vars(project_name)
+        self.set_project_vars(self.wk_project_name)
         self.screen_name = self.ProjectScreenName
 
 
@@ -111,11 +129,10 @@ class Projects():
         
     def project_pieces_buttons_build(self):
         '''
-        build something in content_col on the pieces page
+        build buttons in content_col on the pieces page
         '''
-        # show and clear anything left in the widget
-        self.widget_visible(self.root.ids.content_col)
-
+        self.content_col_button_build(self.project_button_labels)
+        
 
 # =============================================================================
 # project backups

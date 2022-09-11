@@ -10,6 +10,8 @@ from kivy.uix.settings import SettingsWithTabbedPanel
 
 
 class Settings():
+    use_kivy_settings = False
+
 # =============================================================================
 # settings page
 # =============================================================================

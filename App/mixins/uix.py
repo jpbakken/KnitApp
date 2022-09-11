@@ -6,21 +6,26 @@ Created on Sat Sep 10 11:52:03 2022
 @author: jpbakken
 """
 import os
+
 import mixins.layout as kv
 from mixins.layout import EditFieldDialog
 
 from kivymd.uix.list import OneLineListItem
 from kivymd.uix.menu import MDDropdownMenu
-from kivymd.uix.snackbar import Snackbar
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.button import MDFlatButton
+from kivymd.uix.button import MDRaisedButton
 from kivy.lang import Builder
 from kivy.metrics import dp
 
+from kivymd.uix.snackbar import Snackbar
 
 class Uix():
     '''
     '''
+    edit_field_dialog = None
+    confirm_dialog = None
+
 # =============================================================================
 # gui build - general
 # =============================================================================
@@ -65,11 +70,85 @@ class Uix():
         
         self.clear_layout()
         
+        # get the list of saved projects
+        self.get_project_list()
+        
         self.menu_build(self.root_menu_labels)
         
         self.item_list_build(self.project_list,
                              self.root.ids.content_main)
 
+    def set_uix_vars(self):
+        '''
+        '''
+        
+        # set name of the settings menu item
+        self.menu_item_settings = 'Settings'
+
+        # set names for the root toolbar menu
+        self.root_menu_create_project = 'Create New Project'
+        self.root_menu_icloud_auth = 'Authenticate iCloud'
+        self.root_menu_labels = [self.root_menu_create_project,
+                                  self.root_menu_icloud_auth,
+                                 self.menu_item_settings]
+
+
+        # project toolbar menu
+        self.project_menu_add_piece = 'Add Piece'
+        self.project_menu_edit_name = 'Edit Name'
+        self.project_menu_project_copy = 'Copy Project'
+        self.project_menu_project_delete = 'Delete'
+        self.project_menu_back_to_root = 'Back to Projects'
+        self.project_menu_project_backup = 'Backup Project'
+        
+        
+        self.project_menu_labels = [self.project_menu_back_to_root,
+                                    self.project_menu_project_backup,]
+
+        self.project_button_labels = [self.project_menu_add_piece,
+                                      self.project_menu_edit_name,
+                                      self.project_menu_project_copy,
+                                      self.project_menu_project_delete]
+
+        # piece select list menu
+        self.piece_menu_knit = 'Knit Piece'
+        self.piece_menu_edit_steps = 'Edit Piece'
+        self.piece_menu_copy_piece = 'Copy Piece'
+        self.piece_menu_delete_piece = 'Delete'
+        
+        self.list_menu_labels_piece = [self.piece_menu_knit,
+                                       self.piece_menu_edit_steps,
+                                       self.piece_menu_copy_piece,
+                                       self.piece_menu_delete_piece]
+
+        # piece page toolbar menu
+        self.piece_menu_add_step = 'Add New Step'
+        self.piece_menu_delete_step = 'Delete Selected Step'
+        self.piece_menu_back_to_project = 'Back to Project Pieces'
+        self.piece_menu_edit_name = 'Edit Piece Name'
+        
+        self.piece_menu_labels = [self.piece_menu_add_step,
+                                  self.piece_menu_delete_step,
+                                  self.piece_menu_knit,
+                                  self.piece_menu_edit_name,
+                                  self.piece_menu_back_to_project,]
+        
+        
+        self.piece_knit_menu_reset = 'Reset progress'
+
+        self.piece_knit_menu_labels = [self.piece_knit_menu_reset,
+                                       self.piece_menu_back_to_project,
+                                       ]
+        
+        self.piece_knit_button_previous = 'Previous Step'
+        self.piece_knit_button_jump = 'Jump to Step'
+        self.piece_knit_button_next = 'Next Step'
+        
+        self.piece_knit_button_labels = [self.piece_knit_button_previous,
+                                         self.piece_knit_button_jump,
+                                         self.piece_knit_button_next]
+
+        
 
 # =============================================================================
 # gui build - list of items in scrollview
@@ -108,16 +187,8 @@ class Uix():
         self.list_menu.dismiss()
         
         if self.screen_name == self.ProjectScreenName:
-            
-            if menu_item == self.piece_menu_knit:
-                self.knit_piece_build() 
-                
-            elif menu_item == self.piece_menu_edit_steps:
-                self.piece_edit_build()
-                
-            elif menu_item == self.piece_menu_show_steps:
-                self.piece_steps_table_build(self.wk_piece_name)    
-            
+            self.menu_callback(menu_item)            
+        
         else:
             Snackbar(text=menu_item).open()
 
@@ -128,7 +199,7 @@ class Uix():
         # if on the main screen, click through to the list of project pieces
         if self.screen_name == self.RootScreenName:
             self.set_project_vars(instance.text)
-            self.project_build(self.wk_project_name)
+            self.project_build()
 
         # if on the project pieces screen, build set menu options
         elif self.screen_name == self.ProjectScreenName:
@@ -149,8 +220,90 @@ class Uix():
 
 
 # =============================================================================
+# content_col buttons build
+# =============================================================================
+
+    def content_col_button_build(self,
+                                 button_list,
+                                 padding_hint=.25
+                                 ):
+
+        # show and clear anything left in the widget
+        self.widget_visible(self.root.ids.content_col)
+
+        scroll = Builder.load_string(kv.scroll_list_widget)  
+        mdlist = scroll.ids.mdlist
+        
+        for button in button_list:
+            
+            # add a disabled item for spacer
+            mdlist.add_widget(OneLineListItem(
+                size_hint = (.8, padding_hint),
+                disabled = True))
+            
+            # add the button
+            button = MDRaisedButton(
+                        text=button,
+                        size_hint = (.8,.8),
+                        on_release = self.content_col_button_on_release,
+                        )
+                    
+            mdlist.add_widget(button)
+        
+        self.root.ids.content_col.add_widget(scroll)
+
+
+    def content_col_button_on_release(self, inst):
+        '''
+        '''
+        self.menu_callback(inst.text)
+        
+        
+# =============================================================================
 # edit field dialog box build
 # =============================================================================
+    def dialog(self,
+                title='Failed', 
+                text='Verification failed. Please try again.'):
+        
+        MDDialog(title=title,
+                  text=text,
+                  pos_hint = {'center_x': .5, 'top': .9}).open()
+
+
+    def dialog_confirm(self,
+                       title,
+                       text,):
+    
+        self.confirm_dialog = MDDialog(
+            title=title,
+            text=text,
+            pos_hint = {'center_x': .5, 'top': .9},
+            buttons=[
+                MDFlatButton(
+                    text="Cancel",
+                    on_release=self.dialog_confirm_dismiss),
+                MDFlatButton(
+                    text="OK",
+                    on_release=self.dialog_confirm_ok)])
+            
+        self.confirm_dialog.open()
+        
+        
+    def dialog_confirm_dismiss(self, inst):
+        '''
+        '''
+        self.confirm_dialog.dismiss()
+        
+        
+    def dialog_confirm_ok(self, inst):
+        '''
+        '''
+        self.menu_callback(self.confirm_dialog.title)
+        self.confirm_dialog.dismiss()
+
+        
+        
     def dialog_field_build(self):
         '''
         popup dialog used to edit a field (e.g., project name)
@@ -196,17 +349,17 @@ class Uix():
             edit_field.error = True
             
         else:
-            # if creating or editing a project name
+            # creating or editing a project name
             if 'Project Name' in self.edit_field_name:
                 edit_field.helper_text=\
                     'There can be only one...name must be unique'
                 self.dialog_project_name_save(new_value)
 
-            # if creating or editing a piece name
+            # creating or editing a piece name
             elif 'Piece Name' in self.edit_field_name:
                 self.dialog_piece_name_save(new_value)
                 
-            
+            # jumping to a specified row
             elif self.edit_field_name == self.piece_knit_button_jump:
                 end_row = self.wk_piece_in_progress['EndRow']
                 
@@ -242,10 +395,14 @@ class Uix():
             if not os.path.exists(new_path):
                 os.makedirs(new_path)
                 
+        elif 'Copied' in self.edit_field_name:
+            self.copy_data_dir(source_dir = self.wk_project_data_dir, 
+                               target_dir = new_path)
+                
         # refresh the list of saved projects
         self.get_project_list()
 
-        self.project_build(self.wk_project_name)
+        self.project_build()
         
         
     def dialog_piece_name_save(self, new_value):
@@ -283,9 +440,13 @@ class Uix():
             
             # add the first step to the piece
             self.wk_piece = []
-            
             self.create_step()
-            
+
+        elif 'Copied' in self.edit_field_name:
+            self.set_piece_filenames()
+            self.write_wk_piece()
+            self.piece_edit_build()
+
             
     def dialog_piece_jump_save(self,new_value):
         '''
@@ -375,43 +536,79 @@ class Uix():
             self.open_settings()
                                 
         elif self.screen_name == self.RootScreenName:
-            self.root_menu_callback(menu_item)
+            self.root_callback(menu_item)
 
         elif self.screen_name == self.ProjectScreenName:
-            self.project_menu_callback(menu_item)
+            self.project_callback(menu_item)
 
         elif self.screen_name in [self.PieceScreenName,
                                   self.PieceKnitScreenName]:
-            self.piece_menu_callback(menu_item)
+            self.piece_callback(menu_item)
 
 
-    def root_menu_callback(self, menu_item):
+    def root_callback(self, menu_item):
         '''
         '''
         if menu_item == self.root_menu_create_project:
+            self.edit_field_name = 'New Project Name'
             self.create_project()
             
         if menu_item == self.root_menu_icloud_auth:
             self.dialog_icloud_login()
 
 
-    def project_menu_callback(self, menu_item):
+    def project_callback(self, menu_item):
         '''
         '''
+        
         if menu_item == self.project_menu_add_piece:
+            self.edit_field_name = 'New Piece Name'
             self.create_piece()
-            
+        
         elif menu_item == self.project_menu_edit_name:
+            self.edit_field_name = 'Edit Project Name'
             self.dialog_field_build()
 
         elif menu_item == self.project_menu_back_to_root:
             self.root_build()
             
+        elif menu_item == self.project_menu_project_copy:
+            self.copy_project()
+            
+        elif menu_item == self.project_menu_project_delete:
+            # button is called "Delete" - opens confirmation dialog
+            self.dialog_confirm(
+                title=self.delete_project_title,
+                text=self.delete_project_text)
+        
+        elif menu_item == self.delete_project_title:
+            self.delete_project()
+            self.root_build()
+            
+        elif menu_item == self.delete_piece_title:
+            self.delete_piece()
+            self.project_build()
+
         elif menu_item == self.project_menu_project_backup:
             self.project_backup()
     
+        elif menu_item == self.piece_menu_knit:
+            self.knit_piece_build() 
+            
+        elif menu_item == self.piece_menu_edit_steps:
+            self.piece_edit_build()
 
-    def piece_menu_callback(self, menu_item):
+        elif menu_item == self.piece_menu_copy_piece:
+            self.copy_piece()
+        
+        elif menu_item == self.piece_menu_delete_piece:
+            # button is called "Delete" - opens confirmation dialog
+            self.dialog_confirm(
+                title=self.delete_piece_title,
+                text=self.delete_piece_text)
+
+
+    def piece_callback(self, menu_item):
         '''
         '''
 
@@ -434,10 +631,10 @@ class Uix():
                 self.step_save()
                 
                 if self.validation_error == False:
-                    self.project_build(self.wk_project_name)
+                    self.project_build()
                     
             elif self.screen_name == self.PieceKnitScreenName:
-                self.project_build(self.wk_project_name)
+                self.project_build()
 
         elif menu_item == self.piece_knit_menu_reset:
             self.dialog_knit_piece_reset()

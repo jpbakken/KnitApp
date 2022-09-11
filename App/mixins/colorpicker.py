@@ -11,6 +11,8 @@ from kivymd.uix.dialog import MDDialog
 from kivymd.uix.pickers import MDColorPicker
 
 class ColorPicker():
+    color_picker = None
+
 # =============================================================================
 # color picker 
 # =============================================================================

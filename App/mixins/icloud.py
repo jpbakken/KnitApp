@@ -23,7 +23,9 @@ import os
 
 
 class iCloud():
-    
+    icloud = None
+    icloud_action = None
+
     
     def icloud_thread_start(self,target):
         '''
@@ -115,15 +117,6 @@ class iCloud():
                     on_release=self.dialog_icloud_login_save)])
         
         self.icloud_login_dialog.open()
-
-
-    def dialog(self,
-                title='Failed', 
-                text='Verification failed. Please try again.'):
-        
-        MDDialog(title=title,
-                  text=text,
-                  pos_hint = {'center_x': .5, 'top': .9}).open()
 
 
     def dialog_icloud_auth_dismiss(self, inst):
