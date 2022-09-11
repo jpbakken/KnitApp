@@ -10,7 +10,40 @@ import os
 class Projects():
     '''
     '''
-    
+# =============================================================================
+# data read and write functions
+# =============================================================================
+    def get_project_list(self):
+        '''
+        get and sort project list from the app data directory
+        '''
+        self.project_list = [d for d in next(os.walk(self.data_dir))[1] \
+                             if d not in [self.backup_dirname,
+                                          '_cookies']]
+        self.project_list.sort()
+
+
+    def get_wk_pieces_list(self):
+        '''
+        get and sort pieces list from the working project directory
+        '''
+        self.wk_pieces_list = os.listdir(self.wk_pieces_dir)
+        self.wk_pieces_list = [name.split('.')[0] for name in self.wk_pieces_list]
+
+
+# =============================================================================
+# application actions
+# =============================================================================
+    def create_project(self):
+        '''
+        use edit field dialog to create a new project
+        '''
+        self.edit_field_name = 'New Project Name'
+        self.edit_field_check_list = self.project_list
+        self.edit_field_text = ''
+        self.dialog_field_build()
+
+
     def set_project_vars(self,project_name):
         '''
         set working project variables
@@ -44,18 +77,8 @@ class Projects():
         self.edit_field_check_list = self.project_list
 
 
-    def create_project(self):
-        '''
-        use edit field dialog to create a new project
-        '''
-        self.edit_field_name = 'New Project Name'
-        self.edit_field_check_list = self.project_list
-        self.edit_field_text = ''
-        self.dialog_field_build()
-
-
 # =============================================================================
-# gui build - project page (listing pices)
+# project page (listing pieces)
 # =============================================================================
     def project_build(self, project_name):
         '''
@@ -95,7 +118,7 @@ class Projects():
 
 
 # =============================================================================
-#   backups
+# project backups
 # =============================================================================
     def project_backup(self):
         '''
@@ -113,6 +136,7 @@ class Projects():
 
     def project_del_local_backup(self,):
         '''
+        keep only number of backups specified in config settings
         '''
         files = os.listdir(self.wk_project_backup_dir)
         backups = []
@@ -131,6 +155,7 @@ class Projects():
 
     def project_del_icloud_backup(self):
         '''
+        keep only number of backups specified in config settings
         '''
         files = self.icloud.drive[self.app_name][self.wk_project_name].dir()
         backups = []

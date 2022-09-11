@@ -9,11 +9,88 @@ import os
 from kivy.uix.scrollview import ScrollView
 from kivymd.uix.list import MDList
 from kivymd.uix.button import MDRaisedButton
+import json
+
 
 class Pieces():
     '''
     '''
-    
+# =============================================================================
+# data read and write functions
+# =============================================================================
+    def read_piece(self):
+        '''
+        '''
+        with open(self.wk_piece_filename, 'r') as json_file:     
+              self.wk_piece = json.load(json_file)
+
+    def get_wk_in_progress(self):
+        '''
+        get work in progress for a piece, or create one if there is not one
+        '''
+        
+        if os.path.exists(self.wk_in_progress_filename):
+            with open(self.wk_in_progress_filename) as json_file:     
+                 self.wk_piece_in_progress = json.load(json_file)
+
+        else:
+            self.wk_piece_in_progress = self.new_wk_in_progress
+            
+        self.knit_step_row = self.wk_piece_in_progress['StepRow'] 
+
+
+    def get_wk_substeps(self):
+        '''
+        get substeps list from the working project directory
+        '''
+        self.get_wk_in_progress()
+        
+        if (self.wk_piece_in_progress['StepRow'] > 1 and 
+            os.path.exists(self.wk_substeps_filename)):
+            
+                with open(self.wk_substeps_filename) as json_file:     
+                     self.wk_substeps = json.load(json_file)
+                     
+        else:
+            self.calc_substeps()
+
+
+    def write_wk_piece(self):
+        '''
+        write a json file for the working piece dictionary
+        '''
+        self.wk_piece.sort(key=self.sort_steps)
+
+        with open(self.wk_piece_filename, 'w') as f:
+            json.dump(self.wk_piece, f)
+               
+
+    def sort_steps(self, e):
+        return e['StartRow']
+
+
+    def write_wk_step_in_progress(self):
+        '''
+        '''
+        self.wk_piece_in_progress['StepRow'] = self.knit_step_row
+                
+        with open(self.wk_in_progress_filename, 'w') as f:
+            json.dump(self.wk_piece_in_progress, f)
+
+
+    def write_wk_substeps(self):
+        '''
+        write a json file for the working substeps dictionary
+        '''
+        with open(self.wk_substeps_filename, 'w') as f:
+            json.dump(self.wk_substeps, f)
+            
+        
+        self.write_wk_step_in_progress()
+
+# =============================================================================
+# application actions
+# =============================================================================
     def create_piece(self):
         '''
         use edit field dialog to create a new piece
@@ -109,7 +186,7 @@ class Pieces():
 
 
 # =============================================================================
-# gui build - piece edit (listing steps)    
+# edit piece (listing steps)    
 # ============================================================================
         
     def piece_edit_build(self):

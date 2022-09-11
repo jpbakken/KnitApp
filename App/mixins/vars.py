@@ -5,10 +5,12 @@ Created on Sat Sep 10 10:40:36 2022
 
 @author: jpbakken
 """
-import kv
+import mixins.layout as kv
 # from cryptography.fernet import Fernet
 from kivy.lang import Builder
 
+import shutil
+import os
 
 
 # =============================================================================
@@ -16,6 +18,45 @@ from kivy.lang import Builder
 # =============================================================================
 class AppVars():
     
+# =============================================================================
+# data direcotry variables and processing
+# =============================================================================
+    def set_data_dir(self):
+        '''
+        set the data directory to the user data directory for the app
+        
+        copy sample files from app data directory if user directory is empty
+        '''
+         
+        self.data_dir = self.app.user_data_dir
+        self.copy_data_dir()
+
+        self.encrypted_filepath = os.path.join(self.data_dir
+                                               ,'_cookies','.tree')
+
+
+    def copy_data_dir(self):
+        '''
+        if self.data_dir is empty, copy the sample data dir
+        '''
+        target_dir = self.data_dir
+        source_dir = 'data'
+        
+        #if target directory has no project folders 
+        if not [d for d in next(os.walk(target_dir))[1]]:
+            # get list of files from the source directory
+            files=os.listdir(source_dir)
+            
+            # copy files and directories from source to target
+            for file in files:                
+                src = os.path.join(source_dir,file)
+                tgt = os.path.join(target_dir,file)
+                
+                if os.path.isdir(src):
+                    shutil.copytree(src, tgt)
+                else:
+                    shutil.copy2(src, target_dir)
+
 # =============================================================================
 # class variables
 # =============================================================================

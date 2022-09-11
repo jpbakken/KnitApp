@@ -5,7 +5,7 @@ Created on Sat Sep 10 11:56:59 2022
 
 @author: jpbakken
 """
-import kv
+import mixins.layout as kv
 from itertools import compress
 from kivy.lang import Builder
 # from kivymd.uix.button import MDFlatButton
