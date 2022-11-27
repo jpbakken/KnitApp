@@ -7,8 +7,10 @@
 #TODO: add encryption back to icloud username/password
 #TODO: restore from backup
     # local or icloud backup?
-#TODO: edit step button on knit screen
-$TODO: confirmation: changes will not take effect until knitting progress is reset.  Reset progress now? Or reset progress and start on current step (x of X for step)
+#TODO: Delete piece prompts delete package
+#TODO: when new step is created, that step should be selected
+#TODO: when piece is creted, problems with steps if teh first step doesn't get renamed
+
 
 from mixins.colorpicker import ColorPicker
 from mixins.backups import Backups
@@ -44,6 +46,3 @@ if __name__ == '__main__':
     KnitApp().run()
     
     
-#TODO: Delete piece prompts delete package
-#TODO: when new step is created, that step should be selected
-#TODO: when piece is creted, problems with steps if teh first step doesn't get renamed

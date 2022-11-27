@@ -137,6 +137,7 @@ class Uix():
         self.piece_knit_menu_reset = 'Reset progress'
 
         self.piece_knit_menu_labels = [self.piece_knit_menu_reset,
+                                       self.piece_menu_edit_steps,
                                        self.piece_menu_back_to_project,
                                        ]
         
@@ -626,10 +627,15 @@ class Uix():
             self.step_delete()
                 
         elif menu_item == self.piece_menu_knit:
-            self.knit_piece_build() 
+            self.knit_piece_build()
+            self.knit_piece_reset()
 
         elif menu_item == self.piece_menu_edit_name:
             self.dialog_field_build()
+
+        elif menu_item == self.piece_menu_edit_steps:
+            self.wk_step_idx = 0
+            self.piece_edit_build()
         
 
         elif menu_item == self.piece_menu_back_to_project:
@@ -645,3 +651,4 @@ class Uix():
 
         elif menu_item == self.piece_knit_menu_reset:
             self.dialog_knit_piece_reset()
+

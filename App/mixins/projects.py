@@ -37,6 +37,8 @@ class Projects():
         
     '''
     knit_piece_complete = None
+    knit_step_row = None
+    # wk_piece_in_progress = None
 
 # =============================================================================
 # data read and write functions
@@ -704,15 +706,29 @@ class Projects():
             
         self.knit_piece_content_build()
     
+    
+    def knit_piece_reset_work_in_progress(self):
+        '''
+        '''
+        
+        self.knit_step_row = 1
+        self.write_wk_step_in_progress()
+        
+    
     def knit_piece_reset(self, inst=None):
         '''
         reset knitting progress on a piece
         '''
-        self.knit_piece_complete.dismiss()
-        self.knit_step_row = 1
-        self.write_wk_step_in_progress()
-        self.knit_piece_build()
-
+        if self.knit_piece_complete:
+            self.knit_piece_complete.dismiss()
+                    
+        if self.knit_step_row > self.wk_piece_in_progress['EndRow']:
+            self.piece_callback(self.piece_menu_back_to_project)
+            self.knit_piece_reset_work_in_progress()
+        else:
+            self.knit_piece_reset_work_in_progress()
+            self.knit_piece_build() 
+            
 
     def piece_knit_jump_to_step(self):
         '''
