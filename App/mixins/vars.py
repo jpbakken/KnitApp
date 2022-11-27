@@ -101,14 +101,14 @@ class Vars():
         self.PieceScreenName = 'piece'
         self.PieceKnitScreenName = 'knit'
         
-        self.delete_project_title = 'Delete Project'
+        self.delete_project_title = 'Delete Project?'
         self.delete_project_text = \
             'This will delete all local project data,' \
             + 'including backups.' \
             + '\n\n' \
             + 'Are you sure?'
 
-        self.delete_piece_title = 'Delete Piece'
+        self.delete_piece_title = 'Delete Piece?'
         self.delete_piece_text = \
             'This will delete the piece and all steps.' \
             + '\n\n' \

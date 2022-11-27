@@ -6,11 +6,12 @@
 """
 #TODO: add encryption back to icloud username/password
 #TODO: restore from backup
-    # local or icloud backup
+    # local or icloud backup?
+#TODO: edit step button on knit screen
+$TODO: confirmation: changes will not take effect until knitting progress is reset.  Reset progress now? Or reset progress and start on current step (x of X for step)
 
 from mixins.colorpicker import ColorPicker
-from mixins.icloud import iCloud
-from mixins.pieces import Pieces
+from mixins.backups import Backups
 from mixins.projects import Projects
 from mixins.settings import Settings
 from mixins.uix import Uix
@@ -20,8 +21,7 @@ from kivymd.app import MDApp
 
 
 class KnitApp(ColorPicker,
-              iCloud,
-              Pieces,
+              Backups,
               Projects,
               Settings,
               Uix,
@@ -42,3 +42,8 @@ class KnitApp(ColorPicker,
 
 if __name__ == '__main__':
     KnitApp().run()
+    
+    
+#TODO: Delete piece prompts delete package
+#TODO: when new step is created, that step should be selected
+#TODO: when piece is creted, problems with steps if teh first step doesn't get renamed

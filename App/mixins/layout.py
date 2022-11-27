@@ -191,7 +191,7 @@ MDGridLayout:
 scroll_list_widget = '''
 
 ScrollView:    
-
+    id: scroll
     MDList:
         id: mdlist
 

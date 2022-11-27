@@ -97,7 +97,7 @@ class Uix():
         self.project_menu_add_piece = 'Add Piece'
         self.project_menu_edit_name = 'Edit Name'
         self.project_menu_project_copy = 'Copy Project'
-        self.project_menu_project_delete = 'Delete'
+        self.project_menu_project_delete = 'Delete Project'
         self.project_menu_back_to_root = 'Back to Projects'
         self.project_menu_project_backup = 'Backup Project'
         
@@ -114,7 +114,7 @@ class Uix():
         self.piece_menu_knit = 'Knit Piece'
         self.piece_menu_edit_steps = 'Edit Piece'
         self.piece_menu_copy_piece = 'Copy Piece'
-        self.piece_menu_delete_piece = 'Delete'
+        self.piece_menu_delete_piece = 'Delete Piece'
         
         self.list_menu_labels_piece = [self.piece_menu_knit,
                                        self.piece_menu_edit_steps,
@@ -394,6 +394,12 @@ class Uix():
             # create project directories
             if not os.path.exists(new_path):
                 os.makedirs(new_path)
+            if not os.path.exists(new_path + '/Pieces'):
+                os.makedirs(new_path + '/Pieces')
+            if not os.path.exists(new_path + '/Substeps'):
+                os.makedirs(new_path + '/Substeps')
+                if not os.path.exists(new_path + '/WorkInProgress'):
+                    os.makedirs(new_path + '/WorkInProgress')
                 
         elif 'Copied' in self.edit_field_name:
             self.copy_data_dir(source_dir = self.wk_project_data_dir, 
@@ -432,7 +438,7 @@ class Uix():
             if os.path.exists(old_in_progres_filename):
                 os.rename(old_in_progres_filename, 
                           self.wk_in_progress_filename)
-                
+            
             self.piece_edit_build()
 
         # create pieces folders/file if creating a new piece
@@ -596,6 +602,7 @@ class Uix():
             self.knit_piece_build() 
             
         elif menu_item == self.piece_menu_edit_steps:
+            self.wk_step_idx = 0
             self.piece_edit_build()
 
         elif menu_item == self.piece_menu_copy_piece:

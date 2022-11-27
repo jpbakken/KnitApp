@@ -22,11 +22,62 @@ import os
 # =============================================================================
 
 
-class iCloud():
+class Backups():
     icloud = None
     icloud_action = None
 
-    
+
+    def project_backup(self):
+        '''
+        authenticate and process backup in a thread
+        --go through 2factor authenticate if needed
+        '''
+        self.icloud_action = 'backup'
+        self.icloud_thread_start(self.icloud_auth)
+        
+        # if an untrusted session is returned, go through 2f auth
+        if self.icloud:
+            if not self.icloud.is_trusted_session:
+                self.dialog_icloud_auth()
+
+
+    def project_del_local_backup(self,):
+        '''
+        keep only number of backups specified in config settings
+        '''
+        files = os.listdir(self.wk_project_backup_dir)
+        backups = []
+        for f in files:
+            if f.split('.')[-1] == 'zip':
+                backups.append(f)
+                
+                
+        backups.sort(reverse=True)
+        
+        for idx, backup in enumerate(backups):
+            if idx >= int(self.backups_local):
+                os.remove(os.path.join(self.wk_project_backup_dir,
+                                       backup))
+
+
+    def project_del_icloud_backup(self):
+        '''
+        keep only number of backups specified in config settings
+        '''
+        files = self.icloud.drive[self.app_name][self.wk_project_name].dir()
+        backups = []
+        for f in files:
+            if f.split('.')[-1] == 'zip':
+                backups.append(f)
+                
+        backups.sort(reverse=True)
+        
+        for idx, backup in enumerate(backups):
+            if idx >= int(self.backups_icloud):
+                self.icloud.drive[self.app_name]\
+                    [self.wk_project_name][backup].delete()
+
+
     def icloud_thread_start(self,target):
         '''
         '''
