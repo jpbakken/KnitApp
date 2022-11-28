@@ -517,6 +517,8 @@ class Projects():
                         
             self.write_wk_piece()  
             
+            self.wk_step_idx = self.step_get_work_idx(step['Code'])
+            
             self.set_project_vars(self.wk_project_name)
             self.set_piece_vars(self.wk_piece_name, self.wk_step_idx)
             
