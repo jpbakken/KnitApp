@@ -227,11 +227,10 @@ MDGridLayout:
         on_focus: app.step_save()
 
     MDGridLayout:
-        id: list_grid
+        id: row_grid
         cols: 3
-        rows: 1
-        # size_hint: (.6,.8)
-        pos_hint: {'center_x': .5, 'center_y': .5}
+        size_hint_y: None
+        height: 120
 
         MDTextField:
             id: start_entry
@@ -239,8 +238,6 @@ MDGridLayout:
             helper_text: 'Start row must be a number'
             helper_text_mode: 'on_error'
             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-            # size_hint_x: None
-            # width: 200
             on_focus: app.step_save()
     
         MDTextField:
@@ -249,8 +246,6 @@ MDGridLayout:
             helper_text: 'How often must be a number'
             helper_text_mode: 'on_error'
             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-            #size_hint_x: None
-            # width: 200
             on_focus: app.step_save()
     
         MDTextField:
@@ -259,14 +254,12 @@ MDGridLayout:
             helper_text: 'How many times must be a number'
             helper_text_mode: 'on_error'
             pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-            #size_hint_x: None
-            # width: 200
             on_focus: app.step_save()
 
     MDRaisedButton:
         id: font_entry
         text: 'Set Step Color'
-        pos_hint: {'center_x': 0.5, 'top': 1}
+        pos_hint: {'center_x': 0.5, 'top': 0}
         on_release: app.dialog_color_picker_open()
 
 
