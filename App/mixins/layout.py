@@ -226,35 +226,42 @@ MDGridLayout:
         width: 200
         on_focus: app.step_save()
 
-    MDTextField:
-        id: start_entry
-        hint_text: 'Start Row'
-        helper_text: 'Start row must be a number'
-        helper_text_mode: 'on_error'
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        #size_hint_x: None
-        width: 200
-        on_focus: app.step_save()
+    MDGridLayout:
+        id: list_grid
+        cols: 3
+        rows: 1
+        # size_hint: (.6,.8)
+        pos_hint: {'center_x': .5, 'center_y': .5}
 
-    MDTextField:
-        id: often_entry
-        hint_text: 'How Often to repeat the step'
-        helper_text: 'How often must be a number'
-        helper_text_mode: 'on_error'
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        #size_hint_x: None
-        width: 200
-        on_focus: app.step_save()
-
-    MDTextField:
-        id: times_entry
-        hint_text: 'How Many Times to repeat the step'
-        helper_text: 'How many times must be a number'
-        helper_text_mode: 'on_error'
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        #size_hint_x: None
-        width: 200
-        on_focus: app.step_save()
+        MDTextField:
+            id: start_entry
+            hint_text: 'Start Row'
+            helper_text: 'Start row must be a number'
+            helper_text_mode: 'on_error'
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            # size_hint_x: None
+            # width: 200
+            on_focus: app.step_save()
+    
+        MDTextField:
+            id: often_entry
+            hint_text: 'How Often to repeat the step'
+            helper_text: 'How often must be a number'
+            helper_text_mode: 'on_error'
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            #size_hint_x: None
+            # width: 200
+            on_focus: app.step_save()
+    
+        MDTextField:
+            id: times_entry
+            hint_text: 'How Many Times to repeat the step'
+            helper_text: 'How many times must be a number'
+            helper_text_mode: 'on_error'
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            #size_hint_x: None
+            # width: 200
+            on_focus: app.step_save()
 
     MDRaisedButton:
         id: font_entry

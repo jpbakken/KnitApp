@@ -271,10 +271,9 @@ class Projects():
         # Snackbar(text='hello').open()
         
 
-    def create_step(self):
+    def create_step(self, step):
         '''
         '''
-        step = self.new_step_dict.copy()
         step['Code'] = step['Code'] + str(len(self.wk_piece)+1)
                 
         self.wk_piece.append(step)
@@ -306,7 +305,7 @@ class Projects():
             # update the buttons
             self.piece_edit_build()
         else:
-            self.create_step()
+            self.create_step(self.new_step_dict.copy())
 
 
 # =============================================================================
@@ -496,7 +495,6 @@ class Projects():
     def step_save(self):
         '''
         '''
-        #TODO: keep the current step selected when changin start row
         step = self.wk_step
         
         self.validation_error = False
@@ -619,9 +617,10 @@ class Projects():
         # iterate through items and build the scroll list
         for i in self.step_row_substeps:
             
-            self.root.ids.header.text = '{0} Row Number {1}'.format(
+            self.root.ids.header.text = '{0} Row Number {1} of {2}'.format(
                 self.wk_piece_name,
-                i['StepRow'])
+                i['StepRow'],
+                self.wk_piece_in_progress['EndRow'])
             
             mdlist.add_widget(
                 TwoLineListItem(

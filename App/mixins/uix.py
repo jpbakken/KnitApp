@@ -102,13 +102,14 @@ class Uix():
         self.project_menu_project_backup = 'Backup Project'
         
         
-        self.project_menu_labels = [self.project_menu_back_to_root,
-                                    self.project_menu_project_backup,]
+        
+        self.project_menu_labels = [self.project_menu_back_to_root]
 
         self.project_button_labels = [self.project_menu_add_piece,
                                       self.project_menu_edit_name,
                                       self.project_menu_project_copy,
-                                      self.project_menu_project_delete]
+                                      self.project_menu_project_delete,
+                                      self.project_menu_project_backup]
 
         # piece select list menu
         self.piece_menu_knit = 'Knit Piece'
@@ -123,11 +124,13 @@ class Uix():
 
         # piece page toolbar menu
         self.piece_menu_add_step = 'Add New Step'
+        self.piece_menu_copy_step = 'Copy Selected Step'
         self.piece_menu_delete_step = 'Delete Selected Step'
         self.piece_menu_back_to_project = 'Back to Project Pieces'
         self.piece_menu_edit_name = 'Edit Piece Name'
         
         self.piece_menu_labels = [self.piece_menu_add_step,
+                                  self.piece_menu_copy_step,
                                   self.piece_menu_delete_step,
                                   self.piece_menu_knit,
                                   self.piece_menu_edit_name,
@@ -447,9 +450,10 @@ class Uix():
             
             # add the first step to the piece
             self.wk_piece = []
-            self.create_step()
+            self.create_step(self.new_step_dict.copy())
 
         elif 'Copied' in self.edit_field_name:
+            self.wk_step_idx = 0
             self.set_piece_filenames()
             self.write_wk_piece()
             self.piece_edit_build()
@@ -621,7 +625,10 @@ class Uix():
         '''
 
         if menu_item == self.piece_menu_add_step:
-            self.create_step()
+            self.create_step(self.new_step_dict.copy())
+
+        elif menu_item == self.piece_menu_copy_step:
+            self.create_step(self.wk_piece[self.wk_step_idx].copy())
             
         elif menu_item == self.piece_menu_delete_step:
             self.step_delete()

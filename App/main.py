@@ -7,10 +7,6 @@
 #TODO: add encryption back to icloud username/password
 #TODO: restore from backup
     # local or icloud backup?
-#TODO: Delete piece prompts delete package
-#TODO: when new step is created, that step should be selected
-#TODO: when piece is creted, problems with steps if teh first step doesn't get renamed
-
 
 from mixins.colorpicker import ColorPicker
 from mixins.backups import Backups
@@ -20,6 +16,10 @@ from mixins.uix import Uix
 from mixins.vars import Vars
 from mixins.zip import Zip
 from kivymd.app import MDApp
+
+# from kivy.core.window import Window
+# Window.keyboard_anim_args = {'d': .2, 't': 'in_out_expo'}
+# Window.softinput_mode = "below_target"
 
 
 class KnitApp(ColorPicker,
