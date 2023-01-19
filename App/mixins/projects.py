@@ -49,6 +49,7 @@ class Projects():
         '''
         self.project_list = [d for d in next(os.walk(self.data_dir))[1] \
                              if d not in [self.backup_dirname,
+                                          self.restore_dirname,
                                           '_cookies']]
         self.project_list.sort()
 
@@ -59,6 +60,8 @@ class Projects():
         '''
         self.wk_pieces_list = os.listdir(self.wk_pieces_dir)
         self.wk_pieces_list = [name.split('.')[0] for name in self.wk_pieces_list]
+
+        self.wk_pieces_list.sort()
 
     def read_piece(self):
         '''
@@ -101,6 +104,7 @@ class Projects():
         '''
         write a json file for the working piece dictionary
         '''
+        self.wk_piece.sort(key=self.sort_steps_second)
         self.wk_piece.sort(key=self.sort_steps)
 
         with open(self.wk_piece_filename, 'w') as f:
@@ -110,6 +114,8 @@ class Projects():
     def sort_steps(self, e):
         return e['StartRow']
 
+    def sort_steps_second (self, e):
+        return e['Code']
 
     def write_wk_step_in_progress(self):
         '''
@@ -614,7 +620,8 @@ class Projects():
         # build the list of pieces
         mdlist = MDList()        
         mdlist.add_widget(TwoLineListItem(disabled=True))
-        # iterate through items and build the scroll list
+        
+        # iterate through items and build the scroll list        
         for i in self.step_row_substeps:
             
             self.root.ids.header.text = '{0} Row Number {1} of {2}'.format(
@@ -622,8 +629,7 @@ class Projects():
                 i['StepRow'],
                 self.wk_piece_in_progress['EndRow'])
             
-            mdlist.add_widget(
-                TwoLineListItem(
+            two_line_widget = TwoLineListItem(
                     text="{}".format(i['Action']),
                     secondary_text='{0}: {1} of {2} times'.format(
                         i['Code'],
@@ -635,8 +641,9 @@ class Projects():
                     bg_color=i['FontColor'],
                     theme_text_color='Custom',
                     on_release=self.knit_piece_next_step)
-                )
                         
+            mdlist.add_widget(two_line_widget)
+            
         # add list to the scroll view
         scroll = ScrollView(do_scroll=False)
         scroll.add_widget(mdlist)

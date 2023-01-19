@@ -18,6 +18,16 @@ class Zip():
     wk_project_name = None
     backup_dirname = None
     
+    
+    def unzip_file(self, file_name, source_dir, destination_dir):
+        '''
+        '''
+        os.chdir(source_dir)
+
+        with zipfile.ZipFile(file_name, "r") as z:
+            z.extractall(destination_dir)
+
+        
     # compress file function
     def zip_file(self,file_path):
         compress_file = zipfile.ZipFile(file_path + '.zip', 'w')

@@ -4,9 +4,10 @@
 
 @author: jpbakken
 """
+#TODO: add sort key for pieces so names do not need to be numbered
 #TODO: add encryption back to icloud username/password
 #TODO: restore from backup
-    # local or icloud backup?
+    # local backup?
 
 from mixins.colorpicker import ColorPicker
 from mixins.backups import Backups

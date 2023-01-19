@@ -88,8 +88,10 @@ class Uix():
         # set names for the root toolbar menu
         self.root_menu_create_project = 'Create New Project'
         self.root_menu_icloud_auth = 'Authenticate iCloud'
+        self.root_menu_restore_backup = 'Restore iCloud Backup'
         self.root_menu_labels = [self.root_menu_create_project,
                                   self.root_menu_icloud_auth,
+                                  self.root_menu_restore_backup,
                                  self.menu_item_settings]
 
 
@@ -174,13 +176,17 @@ class Uix():
         scroll = Builder.load_string(kv.scroll_list_widget)
         
         # iterate through items and build the scroll list
+        
         for i in items:
-            scroll.ids.mdlist.add_widget(
-                OneLineListItem(
-                    text="{}".format(i),
-                    on_release=self.item_list_menu_on_release,
-                    ))
-                        
+        
+            item_widget = OneLineListItem(
+                text="{}".format(i),
+                on_release=self.item_list_menu_on_release,
+                )
+            
+            scroll.ids.mdlist.add_widget(item_widget)
+                       
+
         # add widget to the content area
         widget.add_widget(scroll)
 
@@ -221,6 +227,12 @@ class Uix():
                                             width_mult=4)
             
             self.list_menu.open()
+            
+        elif self.screen_name == self.BackupScreenName:
+            self.restore_icloud_file_list_build(instance.text)
+            
+        elif self.screen_name == self.BackupProjectScreenName:
+            self.restore_icloud_file(instance.text)
 
 
 # =============================================================================
@@ -555,6 +567,14 @@ class Uix():
         elif self.screen_name in [self.PieceScreenName,
                                   self.PieceKnitScreenName]:
             self.piece_callback(menu_item)
+            
+        elif self.screen_name == self.BackupScreenName:
+            self.backup_callback(menu_item)
+            
+        elif self.screen_name == self.BackupProjectScreenName:
+            self.backup_project_callback(menu_item)
+            
+
 
 
     def root_callback(self, menu_item):
@@ -566,6 +586,22 @@ class Uix():
             
         if menu_item == self.root_menu_icloud_auth:
             self.dialog_icloud_login()
+            
+        if menu_item == self.root_menu_restore_backup:
+            self.restore_icloud_project_list_build()
+
+
+    def backup_callback(self,menu_item):
+        '''
+        '''        
+        if menu_item == self.project_menu_back_to_root:
+            self.root_build()
+    
+    def backup_project_callback(self,menu_item):
+        '''
+        '''        
+        if menu_item == self.project_menu_back_to_root:
+            self.restore_icloud_project_list_build()
 
 
     def project_callback(self, menu_item):

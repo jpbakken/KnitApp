@@ -18,6 +18,7 @@ import os
 # =============================================================================
 class Vars():
     backup_dirname = '_backups'
+    restore_dirname = '_restore'
     app_name = 'KnitRows'   
 
 # =============================================================================
@@ -86,7 +87,7 @@ class Vars():
                               'HowManyTimes': 1, 
                               'HowOften': 1, 
                               'StartRow': 1, 
-                              'FontColor': self.color_select1
+                              'FontColor': self.color_select1,
                               }
 
         self.new_wk_in_progress = {"StepRow": 1}
@@ -100,6 +101,9 @@ class Vars():
         self.ProjectScreenName = 'project'
         self.PieceScreenName = 'piece'
         self.PieceKnitScreenName = 'knit'
+        
+        self.BackupScreenName = 'Restore Backup'
+        self.BackupProjectScreenName = 'Restore Project Backup'
         
         self.delete_project_title = 'Delete Project?'
         self.delete_project_text = \
